@@ -1,0 +1,46 @@
+#include "imports/stdlib.fc";
+
+(int) get_num() inline {
+  slice data = get_data().begin_parse();
+  return (data~load_uint(64));
+}
+
+() send_fees() inline impure {
+  cell mssage = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(add)
+    .store_coins(10000) ;; some fees to pay for fetch
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1)
+    .store_uint(1, 1)
+    .store_ref(begin_cell().store_slice('some message').end_cell())
+    .end_cell();
+  send_raw_message(mssage, 64);
+}
+
+() fetch_data() inline impure {
+  cell mssage = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(add)
+    .store_coins(10000) ;; some fees to pay for fetch
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1)
+    .store_uint(1, 1)
+    .store_ref(begin_cell().store_slice('some message').end_cell())
+    .end_cell();
+  send_raw_message(mssage, 64);
+}
+
+;; testable
+() recv_internal (slice in_msg_body) impure {
+  ;; user can call oracle client sc to fetch data whenever user vant to
+  int op == in_msg_body~load_uint(32);
+  if (op == op::fetch){
+  int coinPriceRaw = fetch_data(); ;; todo need to add coinPrice fetcher to oracle client SC 
+  int coinPrice = coinPriceRaw~load_uint(64);
+
+  cell data = begin_cell().store_uint(coinPrice, 64).end_cell();
+  int coinOldPrice = get_num();
+  ~dump(coinOldPrice);
+  ~dump(coinPrice);
+  set_data(data);
+ }
+}
