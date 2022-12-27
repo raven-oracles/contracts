@@ -20,8 +20,8 @@ export class OracleV1LocalClient {
   ) {}
 
   static async create(
-    walletOwnerAddress: Address,
-    jettonMasterAddress: Address
+    walletOwnerAddress?: Address,
+    jettonMasterAddress?: Address
   ) {
     const code = await compileFunc(oracleClientSourceV1());
 
@@ -29,8 +29,6 @@ export class OracleV1LocalClient {
       code.cell,
       beginCell()
         .storeCoins(0)
-        .storeAddress(walletOwnerAddress)
-        .storeAddress(jettonMasterAddress)
         .storeRef(code.cell)
         .endCell()
     );

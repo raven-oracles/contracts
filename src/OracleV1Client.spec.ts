@@ -33,40 +33,40 @@ function assertCoins(a: BN, b: BN) {
   expect(a.eq(b)).toBeTruthy();
 }
 
-const config = {
-  metadata: {
-    name: "USDT/TON Price Oracle",
-    image: "https://www.linkpicture.com/q/download_183.png", // Image url
-    description: "This is master oracle for USDT/TON price",
-  },
-};
+function updateBodyConstructor(params: { payload: BN }): Cell {
+	return beginCell()
+		.storeUint(0x757064617465 , 32)
+		.storeUint(params.payload, 64)
+		.endCell();
 
-describe("Oracle v1 Master", () => {
-  let masterContract: OracleV1LocalMaster;
-  let clientContract: OracleV1LocalClient;
 
-  const getClientContract = async (
-    clientOwnerAddress: Address,
-    oracleMasterAddress: Address
-  ) =>
-    await OracleV1LocalClient.create(clientOwnerAddress, oracleMasterAddress);
+function fetchBodyConstructor(params: { payload: BN }): Cell {
+	return beginCell()
+		.storeUint(0x6665746368 , 32)
+		.storeUint(params.payload, 64)
+		.endCell();
+}
 
-  beforeEach(async () => {
-    masterContract = await OracleV1LocalMaster.createFromConfig(config);
-  });
-
+describe("Oracle v1 Client Push", () => {
+  console.log(1231376549);
   it("should get oracle master initialization data correctly", async () => {
-    const call = await masterContract.contract.invokeGetMethod(
-      "get_oracle_data",
-      []
-    );
+  let clientContract: OracleV1LocalClient;
+  clientContract = await OracleV1LocalClient.create();
+    const call = await clientContract.contract.sendInternalMessage(internalMessage({
+				from: randomAddress("notowner"),
+				body: updateBodyConstructor({
+					payload: toNano('2.35'),
+				})}));
 
-    const { metadata, address } = parseOracleDetails(call);
+        console.log(call.debugLogs)
 
-    expect(address).toBeDefined();
-    expect(metadata.name).toEqual("USDT/TON Price Oracle");
-    expect(metadata.description).toEqual(
-      "This is master oracle for USDT/TON price"
-    );
+    const cal2 = await clientContract.contract.sendInternalMessage(internalMessage({
+				from: randomAddress("notowner"),
+				body: fetchBodyConstructor({
+					payload: toNano('2.35'),
+				})}));
+  console.log(123123);
+        console.log(cal2.actionList)
+
   });
-});
+})};

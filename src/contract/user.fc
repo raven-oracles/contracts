@@ -1,4 +1,3 @@
-#include "imports/stdlib.fc";
 
 (int) get_num() inline {
   slice data = get_data().begin_parse();

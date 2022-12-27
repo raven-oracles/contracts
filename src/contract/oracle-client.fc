@@ -1,4 +1,3 @@
-#include "imports/stdlib.fc";
 
 (int) get_num() inline {
   slice data = get_data().begin_parse();
@@ -6,7 +5,7 @@
 }
 
 () send_fees() impure {
-  cell add = ;; need to add address of treasure contract
+  slice add = begin_cell().end_cell().begin_parse(); ;; need to add address of treasure contract
   cell mssage = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(add)
@@ -23,7 +22,7 @@
     .store_coins(0)
     .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1)
     .store_uint(1, 1)
-    .store_ref(begin_cell().store_uint(coinPrice).end_cell())
+    .store_ref(begin_cell().store_uint(0, 32).store_uint(coinPrice, 64).end_cell())
     .end_cell();
   send_raw_message(mssage, 64);
 }
@@ -32,20 +31,22 @@
 ;; and also store user smart contract address as well
 
 ;; testable
-() recv_internal (slice in_msg_body) impure {
+() recv_internal (cell msg, slice in_msg_body) impure {
+  slice msgslice = msg.begin_parse();
+  slice userContractAdd = msgslice~load_msg_addr();
   ;; oracle client sc on recv_internal get some data from server and then stores it
   int op = in_msg_body~load_uint(32);
   
-  if (op == op::update) { ;; need to add address checker
+  if (op == op::update()) { ;; need to add address checker
     int coinPrice = in_msg_body~load_uint(64);
     cell data = begin_cell().store_uint(coinPrice, 64).end_cell();
     set_data(data);
   }
   
-  if (op == op:fetch) {
+  if (op == op::fetch()) {
     ;; need to add address checker (if requesting add is the same as stored add)
     int coinPrice = get_num();
-    send_fees();
+    ;;send_fees();
     ;; need to add address of user contract load from c4
     send_response(coinPrice, userContractAdd);
   }
