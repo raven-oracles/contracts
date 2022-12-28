@@ -31,12 +31,13 @@
 ;; and also store user smart contract address as well
 
 ;; testable
-() recv_internal (cell msg, slice in_msg_body) impure {
-  slice msgslice = msg.begin_parse();
-  slice userContractAdd = msgslice~load_msg_addr();
+() recv_internal (cell in_msg, slice in_msg_body) impure {
+  slice cs = in_msg.begin_parse();
+  cs~load_uint(4);
+  slice sender_address = cs~load_msg_addr();
   ;; oracle client sc on recv_internal get some data from server and then stores it
   int op = in_msg_body~load_uint(32);
-  
+  ~dump(op);  
   if (op == op::update()) { ;; need to add address checker
     int coinPrice = in_msg_body~load_uint(64);
     cell data = begin_cell().store_uint(coinPrice, 64).end_cell();
@@ -48,7 +49,7 @@
     int coinPrice = get_num();
     ;;send_fees();
     ;; need to add address of user contract load from c4
-    send_response(coinPrice, userContractAdd);
+    send_response(coinPrice, sender_address);
   }
   
   ;; when contract will recive msg fo requesting data he will pay the fees to treasure and then send data back

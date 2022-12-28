@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { Address, beginCell, Cell, toNano, TupleSlice4 } from "ton";
+import { Address, fromNano, beginCell, Cell, toNano, TupleSlice4 } from "ton";
 import { actionToMessage } from "./utils/actionToMessage";
 import { internalMessage } from "./utils/internalMessage";
 import {
@@ -40,10 +40,25 @@ const config = {
     description: "This is master oracle for USDT/TON price",
   },
 };
+console.log('test1')
+function updateBodyConstructor(params: { payload: BN }): Cell {
+	return beginCell()
+		.storeUint(0x98253578, 32)
+		.storeUint(params.payload, 64)
+		.endCell();
+}
 
+function fetchBodyConstructor(): Cell {
+	return beginCell()
+		.storeUint(0x82e96343, 32)
+		.endCell();
+}
+
+ 
 describe("Oracle v1 Master", () => {
   let masterContract: OracleV1LocalMaster;
   let clientContract: OracleV1LocalClient;
+  const tonPrice = '2.44';
 
   const getClientContract = async (
     clientOwnerAddress: Address,
@@ -68,5 +83,27 @@ describe("Oracle v1 Master", () => {
     expect(metadata.description).toEqual(
       "This is master oracle for USDT/TON price"
     );
+  });
+
+  it("should update data on client contract without crash", async () => {
+    clientContract = await OracleV1LocalClient.create();
+    const call = await clientContract.contract.sendInternalMessage(internalMessage({
+			from: randomAddress("notowner"),
+			body: updateBodyConstructor({
+				payload: toNano(tonPrice),
+			})
+    }));
+  });
+
+
+  it("should fetch data from client contract correctly", async () => {
+    const cal2 = await clientContract.contract.sendInternalMessage(internalMessage({
+			from: randomAddress("notowner"),
+			body: fetchBodyConstructor()
+    }));
+    // @ts-ignore
+    const result = fromNano(parseInt('0x'+String(cal2.actionList[0].message.body).slice(18).slice(0, -2).toLowerCase()));
+    
+    expect(result).toEqual(tonPrice)
   });
 });

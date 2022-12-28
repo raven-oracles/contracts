@@ -33,6 +33,6 @@ export const oracleClientSourceV1 = () => {
   }
 
 const oracleClientSourceV1CodeBoc =
-  'te6ccsEBBAEAbwANEjdvART/APSkE/S88sgLAQICzwMCAEW04ZGWPiWWf5Li4QAxkZYKoAmeLEf0BCeW0iWWAZmTAIH2AQBr2A6H0gGADpj8EQOrgyMLoyqRBdTOmfmGRln+T2qkiYcUEMMzK6MbRdTPaiaGmfmAD4BUiYcUj8yt/w=='
+  'te6ccsEBBAEAcwANEjdzART/APSkE/S88sgLAQICzwMCAEW04ZGWPiWWf5Li4QAxkZYKoAmeLEf0BCeW0iWWAZmTAIH2AQBz2A6GmBmP0gGADpj5D/EBhBCEwSmrwpEF1M6Z+YZGWf5PaqSJhxQQhBdLGh3Uz2omhpn5gA+AVImHFMh61fQ='
 
 export const oracleClientSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleClientSourceV1CodeBoc, 'base64'))[0]
