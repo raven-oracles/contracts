@@ -4,9 +4,6 @@ int op::deposit() asm "0x47d54391 PUSHINT";
 int op::withdraw() asm "0x41836980 PUSHINT";
 int op::transfer_ownership() asm "0x2da38aaf PUSHINT";
 
-int op::update() asm "0x98253578 PUSHINT";
-int op::fetch() asm "0x82e96343 PUSHINT";
-
 ;; errors
 int error::unknown_op() asm "101 PUSHINT";
 int error::access_denied() asm "102 PUSHINT";

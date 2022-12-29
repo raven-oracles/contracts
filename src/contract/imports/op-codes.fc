@@ -6,5 +6,8 @@ int op::burn() asm "0x595f07bc PUSHINT";
 int op::burn_notification() asm "0x7bdd97de PUSHINT";
 int op::mint_notification() asm "0x7bdd97d1 PUSHINT";
 
+int op::update() asm "0x98253578 PUSHINT";
+int op::fetch() asm "0x82e96343 PUSHINT";
+
 ;; Minter
 int op::mint() asm "21 PUSHINT";
