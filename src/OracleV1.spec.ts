@@ -1,5 +1,15 @@
 import BN from "bn.js";
-import { Address, CellMessage,  fromNano, beginCell, Cell, toNano, CommonMessageInfo, ExternalMessage, TupleSlice4 } from "ton";
+import {
+  Address,
+  CellMessage,
+  fromNano,
+  beginCell,
+  Cell,
+  toNano,
+  CommonMessageInfo,
+  ExternalMessage,
+  TupleSlice4,
+} from "ton";
 import { actionToMessage } from "./utils/actionToMessage";
 import { internalMessage } from "./utils/internalMessage";
 import {
@@ -41,12 +51,12 @@ const config = {
     description: "This is master oracle for USDT/TON price",
   },
 };
- 
+
 describe("Oracle v1 Master", () => {
   let masterContract: OracleV1LocalMaster;
   let clientContract: OracleV1LocalClient;
 
-  const getClientContract = async (
+        const getClientContract = async (
     clientOwnerAddress: Address,
     oracleMasterAddress: Address
   ) =>
@@ -74,25 +84,27 @@ describe("Oracle v1 Master", () => {
 
 describe("Oracle v1 Client", () => {
   let clientContract: OracleV1LocalClient;
-  const tonPrice = '2.44';
+  const tonPrice = "2.44";
 
   beforeEach(async () => {
     clientContract = await OracleV1LocalClient.create();
   });
 
   it("should update data on client contract correctly", async () => {
-    await clientContract.contract.sendExternalMessage(new ExternalMessage({
-      to: zeroAddress,
-      from: randomAddress("notowner"),
-			body: new CommonMessageInfo({
-        body: new CellMessage(
-          beginCell()
-            .storeUint(0x98253578, 32)
-            .storeUint(toNano(tonPrice), 64)
-		        .endCell()
-        )
+    await clientContract.contract.sendExternalMessage(
+      new ExternalMessage({
+        to: zeroAddress,
+        from: randomAddress("notowner"),
+        body: new CommonMessageInfo({
+          body: new CellMessage(
+            beginCell()
+              .storeUint(0x98253578, 32)
+              .storeUint(toNano(tonPrice), 64)
+              .endCell()
+          ),
+        }),
       })
-    }));
+    );
 
     const getMethodResult = await clientContract.contract.invokeGetMethod(
       "get_stored_coin_price",
@@ -103,29 +115,35 @@ describe("Oracle v1 Client", () => {
   });
 
   it("should fetch data from client contract correctly", async () => {
-    await clientContract.contract.sendExternalMessage(new ExternalMessage({
-      to: zeroAddress,
-      from: randomAddress("notowner"),
-			body: new CommonMessageInfo({
-        body: new CellMessage(
-          beginCell()
-            .storeUint(0x98253578, 32)
-            .storeUint(toNano(tonPrice), 64)
-		        .endCell()
-        )
+    await clientContract.contract.sendExternalMessage(
+      new ExternalMessage({
+        to: zeroAddress,
+        from: randomAddress("notowner"),
+        body: new CommonMessageInfo({
+          body: new CellMessage(
+            beginCell()
+              .storeUint(0x98253578, 32)
+              .storeUint(toNano(tonPrice), 64)
+              .endCell()
+          ),
+        }),
       })
-    }));
-    
-    const fetchMethodResult = await clientContract.contract.sendInternalMessage(internalMessage({
-			from: randomAddress("notowner"),
-			body: beginCell()
-        .storeUint(0x82e96343, 32)
-		    .endCell()
-    }));
- 
+    );
+
+    const fetchMethodResult = await clientContract.contract.sendInternalMessage(
+      internalMessage({
+        from: randomAddress("notowner"),
+        body: beginCell().storeUint(0x82e96343, 32).endCell(),
+      })
+    );
+
     const action = fetchMethodResult.actionList[0] as any; // TODO: need to take type from ton lib
-    const resultValue = fromNano(parseInt('0x'+String(action.message.body).slice(18).slice(0, -2).toLowerCase())); // TODO: find another way to get data from response
-    
-    expect(resultValue).toEqual(tonPrice)
+    const resultValue = fromNano(
+      parseInt(
+        "0x" + String(action.message.body).slice(18).slice(0, -2).toLowerCase()
+      )
+    ); // TODO: find another way to get data from response
+
+    expect(resultValue).toEqual(tonPrice);
   });
-})
+});
