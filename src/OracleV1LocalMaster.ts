@@ -44,22 +44,11 @@ export class OracleV1LocalMaster {
     return new OracleV1LocalMaster(contract, address);
   }
 
-  // TODO: remove
-  // static createMintPayload(
-  //   recepientAddress: Address,
-  //   responseAddress: Address,
-  //   jettonValue: BN,
-  //   forwardAmount: BN,
-  //   forwardPayload: Cell
-  // ): Cell {
-  //   return beginCell()
-  //     .storeUint(OPS.Mint, 32) // opcode
-  //     .storeUint(0, 64) // queryid
-  //     .storeAddress(recepientAddress)
-  //     .storeAddress(responseAddress)
-  //     .storeCoins(jettonValue)
-  //     .storeCoins(forwardAmount)
-  //     .storeRef(forwardPayload)
-  //     .endCell();
-  // }
+  static createSignupPayload(sc_address: Address): Cell {
+    return beginCell()
+      .storeUint(OPS.Signup, 32) // opcode
+      .storeUint(0, 64) // queryid
+      .storeAddress(sc_address)
+      .endCell();
+  }
 }

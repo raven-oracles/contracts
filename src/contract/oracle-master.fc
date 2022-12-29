@@ -1,74 +1,43 @@
 ;; Oracle master smart contract
 
 ;; storage scheme
-;; storage#_ admin_address:MsgAddress meta_data:^Cell oracle_client_code:^Cell = Storage;
+;; storage#_ admin_address:MsgAddress meta_data:^Cell oracle_client_code:^Cell = Storage comission_address:MsgAddress ;
 
 #pragma version >=0.2.0;
+const min_to_create_account = 20000000; ;; 0.02 TON
 
-(slice, cell, cell) load_data() inline {
+(slice, cell, cell, slice) load_data() inline {
     slice ds = get_data().begin_parse();
     return (
         ds~load_msg_addr(), ;; admin_address
         ds~load_ref(), ;; meta_data
-        ds~load_ref() ;; oracle_client_code
+        ds~load_ref(), ;; oracle_client_code
+        ds~load_msg_addr() ;; comission_address
     );
 }
 
-;; () save_data(cell meta_data, cell jetton_wallet_code) impure inline {
-;;     set_data(begin_cell()
-;;             .store_ref(meta_data)
-;;             .store_ref(jetton_wallet_code)
-;;             .end_cell()
-;;     );
-;; }
+cell compose_account_creation(int query_id) inline {
+    return begin_cell()
+        .store_uint(op::account_creation(), 32)
+        .store_uint(query_id, 64)
+        .end_cell();
+}
 
-;; cell compose_mint_notification(int query_id, int jetton_amount, slice sender_address, slice response_address, int forward_amount, slice forward_payload) inline {
-;;     return begin_cell()
-;;         .store_uint(op::mint_notification(), 32)
-;;         .store_uint(query_id, 64)
-;;         .store_coins(jetton_amount)
-;;         .store_slice(sender_address)
-;;         .store_slice(response_address)
-;;         .store_coins(forward_amount)
-;;         .store_slice(forward_payload)
-;;         .end_cell();
-;; }
+;; TODO: add dict support with whitelisted addresses of sc
+() sign_up(int query_id, slice client_owner_addr, cell oracle_client_code, int start_balance, slice sc_address, slice comission_address) impure {
+    cell state_init = calculate_oracle_client_state_init(client_owner_addr, my_address(), sc_address, oracle_client_code, comission_address);
+    slice to_wallet_address = calculate_oracle_client_address(state_init);
+    var msg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(to_wallet_address)
+                .store_coins(start_balance)
+                .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+                .store_ref(state_init)
+                .store_ref(compose_account_creation(query_id));
 
-;; () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, int query_id, slice sender_address, slice response_address, int forward_amount, slice forward_payload, int mint_notif_msg_value) impure {
-;;     cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
-;;     slice to_wallet_address = calculate_jetton_wallet_address(state_init);
-;;     var msg = begin_cell()
-;;             .store_uint(0x18, 6)
-;;             .store_slice(to_wallet_address)
-;;             .store_coins(mint_notif_msg_value)
-;;             .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
-;;             .store_ref(state_init)
-;;             .store_ref(compose_mint_notification(query_id, amount, sender_address, response_address, forward_amount, forward_payload));
-
-;;     send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
-;; }
-
-;; () on_bounce (slice in_msg_body, int msg_value) impure {
-;;     in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
-;;     (int total_supply, cell content, cell jetton_wallet_code) = load_data();
-;;     int op = in_msg_body~load_uint(32);
-;;     throw_unless(911, (op == op::mint_notification()));
-;;     int query_id = in_msg_body~load_uint(64);
-;;     int jetton_amount = in_msg_body~load_coins();
-;;     slice sender_address = in_msg_body~load_msg_addr();
-;;     ;; throw_if(jetton_amount, true);
-
-;;     var msg = begin_cell()
-;;             .store_uint(0x10, 6) ;; nobounce
-;;             .store_slice(sender_address)
-;;             .store_coins(msg_value)
-;;             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-;;             .store_uint(op::excesses(), 32)
-;;             .store_uint(query_id, 64);
-;;     send_raw_message(msg.end_cell(), 2);
- 
-;;     save_data(total_supply - jetton_amount, content, jetton_wallet_code);
-;; }
+    ;; TODO: decide who pays for transfer fees
+    send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
+}
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) { ;; ignore empty messages
@@ -76,106 +45,38 @@
     }
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_uint(4);
+    slice sender_address = cs~load_msg_addr();
 
-    ;; if (flags & 1) {
-    ;;     on_bounce(in_msg_body, msg_value);
-    ;;     return ();
-    ;; }
-    ;; slice sender_address = cs~load_msg_addr();
-    ;; cs~load_msg_addr(); ;; skip dst
-    ;; cs~load_coins(); ;; skip value
-    ;; cs~skip_bits(1); ;; skip extracurrency collection
-    ;; cs~load_coins(); ;; skip ihr_fee
-    ;; int fwd_fee = cs~load_coins(); ;; we use message fwd_fee for estimation of provide_wallet_address cost
+    if (flags & 1) {
+        ;; TODO: Finish logic of on bounce
+        ;; on_bounce(in_msg_body, msg_value);
+        return ();
+    }
+    throw_if(79, msg_value < min_to_create_account);
 
-    (slice admin_address, cell meta_data, cell oracle_client_code) = load_data();
+    (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address) = load_data();
 
-    ;; int op = in_msg_body~load_uint(32);
-    ;; int query_id = in_msg_body~load_uint(64);
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+    slice sc_address = in_msg_body~load_msg_addr();
 
-    ;; if (op == op::mint()) {
-    ;;     slice to_address = in_msg_body~load_msg_addr();
-    ;;     slice response_address = in_msg_body~load_msg_addr();
-    ;;     int amount = in_msg_body~load_coins();
-    ;;     int forward_amount = in_msg_body~load_coins();
-    ;;     slice forward_payload = in_msg_body;
+    int start_balance = msg_value - min_to_create_account;
 
+    ;;TODO: configure proper op codes 
+    if (op == 1) {
+        sign_up(query_id, sender_address, oracle_client_code, start_balance, sc_address, comission_address);
+        return ();
+    }
 
-    ;;     ;; Calculating strage fee
-    ;;     int ton_balance_before_msg = my_balance - total_supply - msg_value;
-    ;;     int storage_fee = const::min_tons_for_storage - min(ton_balance_before_msg, const::min_tons_for_storage);
-
-
-    ;;     ;; Fail if not enough money arrive to mint wTON 1 to 1 and store the funds
-    ;;     throw_unless(71, my_balance > total_supply + amount + storage_fee + const::gas_consumption + fwd_fee);
-
-
-    ;;     ;; Reserve funds for 1 to 1 minted wTON + storage fee
-    ;;     int mint_notif_msg_value = my_balance - (total_supply + amount + storage_fee + const::gas_consumption + fwd_fee);
-
-    ;;     mint_tokens(to_address, jetton_wallet_code, amount, query_id, sender_address, response_address, forward_amount, forward_payload, mint_notif_msg_value);
-    ;;     save_data(total_supply + amount, content, jetton_wallet_code);
-    ;;     return ();
-    ;; }
-
-    ;; if (op == op::burn_notification()) {
-    ;;     int jetton_amount = in_msg_body~load_coins();
-    ;;     slice from_address = in_msg_body~load_msg_addr();
-    ;;     throw_unless(74,
-    ;;         equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
-    ;;     );
-    ;;     save_data(total_supply - jetton_amount, content, jetton_wallet_code);
-    ;;     slice response_address = in_msg_body~load_msg_addr();
-    ;;     if (response_address.preload_uint(2) != 0) {
-    ;;         var msg = begin_cell()
-    ;;                 .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
-    ;;                 .store_slice(response_address)
-    ;;                 .store_coins(0)
-    ;;                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-    ;;                 .store_uint(op::excesses(), 32)
-    ;;                 .store_uint(query_id, 64);
-    ;;         send_raw_message(msg.end_cell(), 2 + 64);
-    ;;     }
-    ;;     return ();
-    ;; }
-
-    ;; if (op == op::provide_wallet_address()) {
-    ;;     throw_unless(75, msg_value > fwd_fee + const::provide_address_gas_consumption());
-
-    ;;     slice owner_address = in_msg_body~load_msg_addr();
-    ;;     int include_address? = in_msg_body~load_uint(1);
-
-    ;;     cell included_address = include_address?
-    ;;             ? begin_cell().store_slice(owner_address).end_cell()
-    ;;             : null();
-
-    ;;     var msg = begin_cell()
-    ;;             .store_uint(0x18, 6)
-    ;;             .store_slice(sender_address)
-    ;;             .store_coins(0)
-    ;;             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-    ;;             .store_uint(op::take_wallet_address(), 32)
-    ;;             .store_uint(query_id, 64);
-
-    ;;     if (is_resolvable?(owner_address)) {
-    ;;         msg = msg.store_slice(calculate_user_jetton_wallet_address(owner_address, my_address(), jetton_wallet_code));
-    ;;     } else {
-    ;;         msg = msg.store_uint(0, 2); ;; addr_none
-    ;;     }
-    ;;     send_raw_message(msg.store_maybe_ref(included_address).end_cell(), 64);
-    ;;     return ();
-    ;; }
-
-    ;; throw(0xffff);
-    return();
+    throw(0xffff);
 }
 
-(slice, cell, cell) get_oracle_data() method_id {
-    (slice admin_address, cell meta_data, cell oracle_client_code) = load_data();
-    return (admin_address, meta_data, oracle_client_code);
+(slice, cell, cell, slice) get_oracle_data() method_id {
+    (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address) = load_data();
+    return (admin_address, meta_data, oracle_client_code, comission_address);
 }
 
-slice get_wallet_address(slice owner_address) method_id {
-     (slice admin_address, cell meta_data, cell oracle_client_code) = load_data();
-    return calculate_user_jetton_wallet_address(admin_address, my_address(), oracle_client_code);
+slice get_oracle_client_address(slice owner_address, slice sc_address) method_id {
+     (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address) = load_data();
+    return calculate_user_oracle_client_address(owner_address, my_address(), sc_address, oracle_client_code, comission_address) ;
 }

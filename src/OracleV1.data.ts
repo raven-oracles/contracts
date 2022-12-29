@@ -138,6 +138,7 @@ export function oracleMasterInitData(metadata: {
     .storeAddress(randomAddress("ADMIN_ADDRESS"))
     .storeRef(buildOracleMetadataCell(metadata))
     .storeRef(oracleMasterSourceV1CodeCell)
+    .storeAddress(randomAddress("COMISSION_ADDRESS"))
     .endCell();
 }
 // return the init Cell of the contract storage (according to load_data() contract method)
@@ -156,5 +157,6 @@ export function initMessage() {
 
 export enum OPS {
   // Excesses = 0xd53276db,
-  Signup = 0x77777771,
+  Signup = 1,
+  AccountCreation = 2,
 }

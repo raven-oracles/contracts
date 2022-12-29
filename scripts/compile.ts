@@ -18,7 +18,6 @@ export const oracleMasterSourceV1 = () => {
       "./contract/imports/stdlib.fc",
       "./contract/imports/params.fc",
       "./contract/imports/constants.fc",
-      "./contract/imports/jetton-utils.fc",
       "./contract/imports/op-codes.fc",
       "./contract/imports/utils.fc",
       "./contract/imports/discovery-params.fc",
@@ -36,7 +35,6 @@ export const oracleClientSourceV1 = () => {
       "./contract/imports/stdlib.fc",
       "./contract/imports/params.fc",
       "./contract/imports/constants.fc",
-      "./contract/imports/jetton-utils.fc",
       "./contract/imports/op-codes.fc",
       "./contract/imports/utils.fc",
       "./contract/imports/discovery-params.fc",
@@ -53,11 +51,10 @@ export const oracleClientSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleClien
 async function main() {
   let master = await compileFunc(oracleMasterSourceV1());
   let client = await compileFunc(oracleClientSourceV1());
-
   await writeFile(
     path.resolve(__dirname, "../src/OracleV1.source.ts"),
     buildSourceContent(master.cell, client.cell)
-  );
+  ).catch((e) => console.log(e));
 }
 
 main();
