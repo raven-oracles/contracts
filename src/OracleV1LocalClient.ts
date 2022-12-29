@@ -11,7 +11,7 @@ import BN from "bn.js";
 import { initData, oracleMasterInitData } from "./OracleV1.data";
 import { oracleClientSourceV1 } from "./OracleV1.source";
 import { compileFunc } from "./utils/compileFunc";
-import { randomAddress } from "./utils/randomAddress";
+import { randomAddress, zeroAddress } from "./utils/randomAddress";
 
 export class OracleV1LocalClient {
   private constructor(
@@ -20,8 +20,8 @@ export class OracleV1LocalClient {
   ) {}
 
   static async create(
-    walletOwnerAddress: Address,
-    jettonMasterAddress: Address
+    walletOwnerAddress?: Address,
+    jettonMasterAddress?: Address
   ) {
     const code = await compileFunc(oracleClientSourceV1());
 
@@ -29,8 +29,8 @@ export class OracleV1LocalClient {
       code.cell,
       beginCell()
         .storeCoins(0)
-        .storeAddress(walletOwnerAddress)
-        .storeAddress(jettonMasterAddress)
+        .storeAddress(walletOwnerAddress ? walletOwnerAddress : zeroAddress) 
+        .storeAddress(jettonMasterAddress ? jettonMasterAddress : zeroAddress)
         .storeRef(code.cell)
         .endCell()
     );

@@ -1,3 +1,5 @@
 int op::excesses() asm "0xd53276db PUSHINT";
 int op::signup() asm "1 PUSHINT";
 int op::account_creation() asm "2 PUSHINT";
+int op::update() asm "0x98253578 PUSHINT";
+int op::fetch() asm "0x82e96343 PUSHINT";
