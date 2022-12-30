@@ -1,7 +1,35 @@
+int fees_amount = 20000000; ;; 0.02 TON
+
 (int) get_stored_coin_price() method_id {
   slice data = get_data().begin_parse();
   return (data~load_uint(64));
 }
+
+(slice, cell, cell, int, slice) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_msg_addr(), ;; admin_address
+        ds~load_ref(), ;; meta_data
+        ds~load_ref(), ;; oracle_client_code
+        ds~load_ref()~load_uint(64), ;; coin_price
+        ds~load_msg_addr() ;; comission_address
+    );
+}
+
+() save_data (slice admin_address, cell meta_data, cell oracle_client_code, int coin_price, slice comission_address)  inline {
+  cell data = begin_cell()
+      .store_slice(admin_address)
+      .store_ref(meta_data)
+      .store_ref(oracle_client_code)
+      .store_ref(begin_cell().store_uint(coin_price, 64).end_cell())
+      .store_slice(comission_address)
+      .end_cell();
+  
+  set_data(data);
+
+  return();
+}
+
 
 () recv_internal (cell in_msg, slice in_msg_body) {
   if (in_msg_body.slice_empty?()) {
@@ -12,12 +40,27 @@
   int flags = cs~load_uint(4);
   slice sender_address = cs~load_msg_addr();
   int op = in_msg_body~load_uint(32);
+
+  (slice admin_address, cell meta_data, cell oracle_client_code, int coin_price, slice comission_address) = load_data();
+  
+  ;; TODO: need to add address checker that sender_address == stored server address
+  if (op == op::update()) {
+    int new_coin_price = in_msg_body~load_uint(64);
+    set_data(admin_address, meta_data, oracle_client_code, new_coin_price, comission_address); 
+    return();
+  }
   
   ;; TODO: need to add address checker (if requesting address == stored user address)
   if (op == op::fetch()) {
-    int coin_price = get_stored_coin_price();
-    ;; TODO: add fees payment to treasure
-    
+ 
+    cell fees_mssage = begin_cell()
+      .store_uint(0x18, 6)
+      .store_slice(comission_address)
+      .store_coins(fees_amount)
+      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+      .end_cell();
+    send_raw_message(fees_mssage, 64);
+
     cell mssage = begin_cell()
       .store_uint(0x18, 6)
       .store_slice(sender_address)
@@ -27,22 +70,19 @@
       .store_ref(begin_cell().store_uint(0, 32).store_uint(coin_price, 64).end_cell())
       .end_cell();
     send_raw_message(mssage, 64);
+    return();
   }
   
-  return(); 
-}
-
-() recv_external(slice in_msg_body) impure {
-  if (in_msg_body.slice_empty?()) {
-    return ();
+  if (op == op::withdrawal()) {
+    cell mssage = begin_cell()
+      .store_uint(0x18, 6)
+      .store_slice(sender_address)
+      .store_coins(0)
+      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+      .end_cell();
+    send_raw_message(mssage, 128); ;; withdrawal entire balance
+    return();
   }
- 
-  int op = in_msg_body~load_uint(32);
 
-  ;; TODO: need to add address checker that sender_address == stored server address
-  if (op == op::update()) {
-    int coin_price = in_msg_body~load_uint(64);
-    cell data = begin_cell().store_uint(coin_price, 64).end_cell();
-    set_data(data);
-  }
+  throw(0xffff);
 }
