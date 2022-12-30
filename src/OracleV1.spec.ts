@@ -121,7 +121,7 @@ describe("Oracle v1 Client", () => {
       internalMessage({
         from: randomAddress("notowner"),
         body: beginCell()
-          .storeUint(0x98253578, 32)
+          .storeUint(OPS.Update, 32)
           .storeUint(toNano(tonPrice), 64)
           .endCell(),
       })
@@ -140,7 +140,7 @@ describe("Oracle v1 Client", () => {
       internalMessage({
         from: randomAddress("notowner"),
         body: beginCell()
-          .storeUint(0x98253578, 32)
+          .storeUint(OPS.Update, 32)
           .storeUint(toNano(tonPrice), 64)
           .endCell(),
       })
@@ -149,7 +149,7 @@ describe("Oracle v1 Client", () => {
     const fetchMethodResult = await clientContract.contract.sendInternalMessage(
       internalMessage({
         from: randomAddress("notowner"),
-        body: beginCell().storeUint(0x82e96343, 32).endCell(),
+        body: beginCell().storeUint(OPS.Fetch, 32).endCell(),
       })
     );
 
