@@ -21,7 +21,7 @@ int fees_amount = 20000000; ;; 0.02 TON
     );
 }
 
-() save_data (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, slice whitelisted_oracle_addresses, cell whitelisted_oracle_addresses)  inline {
+() save_data (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, cell whitelisted_oracle_addresses, slice user_contract_address)  inline {
   cell data = begin_cell()
       .store_uint(whitelist_ignore, 1)
       .store_slice(admin_address)
@@ -58,7 +58,7 @@ int fees_amount = 20000000; ;; 0.02 TON
   slice sender_address = cs~load_msg_addr();
   int op = in_msg_body~load_uint(32);
 
-  (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, slice whitelisted_oracle_addresses, cell whitelisted_oracle_addresses) = load_data();  
+  (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, cell whitelisted_oracle_addresses, slice user_contract_address) = load_data();  
   int oracle_client_code_flag = oracle_client_code.begin_parse()~load_uint(8); ;; if flag == 0 then ondemand / if flag == 1 then subscription
 
   if (op == op::update()) {
@@ -70,7 +70,7 @@ int fees_amount = 20000000; ;; 0.02 TON
         }
         
         int new_coin_price = in_msg_body~load_uint(64);
-        set_data(whitelist_ignore, admin_address, meta_data, oracle_client_code, whitelisted_oracle_addresses, new_coin_price, comission_address); 
+        set_data(whitelist_ignore, admin_address, meta_data, oracle_client_code, comission_address, coin_price, cell whitelisted_oracle_addresses, slice user_contract_address); 
         return();
       } else {
         ;; TODO: add bounce 
@@ -85,7 +85,7 @@ int fees_amount = 20000000; ;; 0.02 TON
   ;; TODO: need to add address checker (if requesting address == stored user address)
   if (op == op::fetch()) {
     tuple balance = get_balance();
-    if (balance.at(0) > fees_amount){
+    if ((balance.at(0) > fees_amount) & (sender_address == user_contract_address)){
       if (oracle_client_code_flag == 0) {
         fees_payment(comission_address);
       }
@@ -107,14 +107,19 @@ int fees_amount = 20000000; ;; 0.02 TON
   }
   
   if (op == op::withdrawal()) {
-    cell mssage = begin_cell()
-      .store_uint(0x18, 6)
-      .store_slice(sender_address)
-      .store_coins(0)
-      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-      .end_cell();
-    send_raw_message(mssage, 128); ;; withdrawal entire balance
-    return();
+    if (sender_address == user_contract_address) {
+      cell mssage = begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(sender_address)
+        .store_coins(0)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .end_cell();
+      send_raw_message(mssage, 128); ;; withdrawal entire balance
+      return();
+    } else {
+      ;; bounce
+      return ();
+    }
   }
 
   throw(0xffff);
