@@ -8,6 +8,7 @@ int op::mint_notification() asm "0x7bdd97d1 PUSHINT";
 
 int op::update() asm "0x98253578 PUSHINT";
 int op::fetch() asm "0x82e96343 PUSHINT";
+int op::withdrawal() asm "0x6d2d3b45 PUSHINT";
 
 ;; Minter
 int op::mint() asm "21 PUSHINT";
