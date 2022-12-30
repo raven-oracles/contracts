@@ -56,7 +56,7 @@ describe("Oracle v1 Master", () => {
   let masterContract: OracleV1LocalMaster;
   let clientContract: OracleV1LocalClient;
 
-        const getClientContract = async (
+  const getClientContract = async (
     clientOwnerAddress: Address,
     oracleMasterAddress: Address
   ) =>
@@ -91,18 +91,13 @@ describe("Oracle v1 Client", () => {
   });
 
   it("should update data on client contract correctly", async () => {
-    await clientContract.contract.sendExternalMessage(
-      new ExternalMessage({
-        to: zeroAddress,
+    await clientContract.contract.sendInternalMessage(
+      internalMessage({
         from: randomAddress("notowner"),
-        body: new CommonMessageInfo({
-          body: new CellMessage(
-            beginCell()
-              .storeUint(0x98253578, 32)
-              .storeUint(toNano(tonPrice), 64)
-              .endCell()
-          ),
-        }),
+        body: beginCell()
+          .storeUint(0x98253578, 32)
+          .storeUint(toNano(tonPrice), 64)
+          .endCell(),
       })
     );
 
@@ -115,18 +110,13 @@ describe("Oracle v1 Client", () => {
   });
 
   it("should fetch data from client contract correctly", async () => {
-    await clientContract.contract.sendExternalMessage(
-      new ExternalMessage({
-        to: zeroAddress,
+    await clientContract.contract.sendInternalMessage(
+      internalMessage({
         from: randomAddress("notowner"),
-        body: new CommonMessageInfo({
-          body: new CellMessage(
-            beginCell()
-              .storeUint(0x98253578, 32)
-              .storeUint(toNano(tonPrice), 64)
-              .endCell()
-          ),
-        }),
+        body: beginCell()
+          .storeUint(0x98253578, 32)
+          .storeUint(toNano(tonPrice), 64)
+          .endCell(),
       })
     );
 
