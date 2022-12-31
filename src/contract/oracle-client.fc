@@ -75,11 +75,11 @@ const fees_amount = 20000000; ;; 0.02 TON
         save_data(whitelist_ignore, admin_address, meta_data, oracle_client_code, comission_address, coin_price, whitelisted_oracle_addresses, user_contract_address); 
         return();
       } else {
-        ;; TODO: add bounce 
+        throw(0xffff);
         return();
       }
     } else {
-      ;; TODO: add bounce 
+      throw(0xffff);
       return();
     }
   }
@@ -103,7 +103,7 @@ const fees_amount = 20000000; ;; 0.02 TON
       send_raw_message(mssage, 64); ;; return coin_price to fetch request
       return();
     } else {
-      ;; bounce
+      throw(0xffff);
       return();
     }
   }
@@ -119,10 +119,9 @@ const fees_amount = 20000000; ;; 0.02 TON
       send_raw_message(mssage, 128); ;; withdrawal entire balance
       return();
     } else {
-      ;; bounce
+      throw(0xfffe);
       return ();
     }
   }
-
   throw(0xffff);
 }
