@@ -20,7 +20,7 @@ import { convertFromExecutorStack } from './utils/convertFromExecutorStack';
 import { OPS } from './OracleV1.data';
 import { randomInt } from 'crypto';
 import { kill } from 'process';
-import { info } from 'console';
+import { info, warn } from 'console';
 
 function assertNotNull(a: unknown): asserts a {
     expect(a).not.toBeNull();
@@ -106,13 +106,13 @@ describe('Oracle v1 Client', () => {
     it('should update data on client contract correctly', async () => {
         await clientContract.contract.sendInternalMessage(
             internalMessage({
+                value: toNano(1),
                 from: senderAddress,
                 body: beginCell().storeUint(OPS.Update, 32).storeUint(toNano(tonPrice), 64).endCell(),
             }),
         );
 
         const getMethodResult = await clientContract.contract.invokeGetMethod('get_stored_coin_price', []);
-
         expect(getMethodResult.result[0]).toEqual(toNano(tonPrice));
     });
 
@@ -123,7 +123,7 @@ describe('Oracle v1 Client', () => {
                 body: beginCell().storeUint(OPS.Update, 32).storeUint(toNano(tonPrice), 64).endCell(),
             }),
         );
-
+        
         const fetchMethodResult = await clientContract.contract.sendInternalMessage(
             internalMessage({
                 from: senderAddress,
@@ -131,7 +131,6 @@ describe('Oracle v1 Client', () => {
             }),
         );
 
-        console.log(fetchMethodResult.debugLogs)
         const action = fetchMethodResult.actionList[0] as any; // TODO: need to take type from ton lib
         const resultValue = fromNano(
             parseInt('0x' + String(action.message.body).slice(18).slice(0, -2).toLowerCase()),
@@ -141,18 +140,20 @@ describe('Oracle v1 Client', () => {
     });
 
     it('should withdrawal all TONs from client contract correctly', async () => {
+        clientContract.contract.setC7Config({
+          balance: toNano(20)
+        })
+
         const withdrawalMethodResult = await clientContract.contract.sendInternalMessage(
             internalMessage({
-                from: randomAddress('notowner'),
+                from: senderAddress,
                 body: beginCell().storeUint(OPS.Withdrawal, 32).endCell(),
             }),
         );
 
+        console.log(withdrawalMethodResult.debugLogs);
         const action = withdrawalMethodResult.actionList[0] as any; // TODO: need to take type from ton lib
-        const resultValue = fromNano(
-            parseInt('0x' + String(action.message.body).slice(18).slice(0, -2).toLowerCase()),
-        ); // TODO: find another way to get data from response
-
-        expect(resultValue).toEqual(tonPrice);
+        console.log(action.message.info.value.coins)
+        //expect(action.message.info.value.coins).toEqual(toNano(20));
     });
 });

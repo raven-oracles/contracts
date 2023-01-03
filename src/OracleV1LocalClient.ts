@@ -32,7 +32,7 @@ export class OracleV1LocalClient {
                       .storeUint(1, 1)
                       .storeAddress(senderAddress)
                       .storeRef(beginCell().endCell())
-                      .storeRef(beginCell().storeUint(1, 64).endCell())
+                      .storeRef(beginCell().storeUint(0, 8).endCell())
                       .storeAddress(senderAddress)
                       .storeRef(beginCell().storeUint(1, 64).endCell())
                       .storeRef(beginCell().storeDict(new DictBuilder(256).endDict()).endCell())

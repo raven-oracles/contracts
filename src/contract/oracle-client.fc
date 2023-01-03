@@ -1,6 +1,6 @@
 (slice, int) dict_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET" "NULLSWAPIFNOT";
 
-const fees_amount = 20000000; ;; 0.02 TON
+const fees_amount = 100; ;; 0.02 TON
 
 (int) get_stored_coin_price() method_id {
   slice ds = get_data().begin_parse();
@@ -53,11 +53,17 @@ const fees_amount = 20000000; ;; 0.02 TON
   send_raw_message(fees_mssage, 64); ;; pay fees
 }
 
-() recv_internal (cell in_msg, slice in_msg_body) {
+() recv_internal (int my_balance, int msg_value, cell in_msg, slice in_msg_body) impure {
   if (in_msg_body.slice_empty?()) {
     return ();
   }
   
+  [int balance, cell balance_cell] = get_balance();
+
+  ~dump(balance);
+  ~dump(my_balance);
+  ~dump(msg_value);
+
   slice cs = in_msg.begin_parse();
   int flags = cs~load_uint(4);
   slice sender_address = cs~load_msg_addr();
@@ -66,6 +72,7 @@ const fees_amount = 20000000; ;; 0.02 TON
   (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, cell whitelisted_oracle_addresses, slice user_contract_address) = load_data();  
   slice oracle_client_code_flag_parsed = oracle_client_code.begin_parse(); 
   int oracle_client_code_flag = oracle_client_code_flag_parsed~load_uint(8); ;; if flag == 0 then ondemand / if flag == 1 then subscription
+  
   if (op == op::update()) {
     [int balance, cell balance_cell] = get_balance();
     if ((balance > fees_amount) | (oracle_client_code_flag == 0)){
@@ -86,16 +93,13 @@ const fees_amount = 20000000; ;; 0.02 TON
       return();
     }
   }
-  
-  ;; TODO: need to add address checker (if requesting address == stored user address)
+
   if (op == op::fetch()) {
     [int balance, cell balance_cell] = get_balance();
-    oracle_client_code_flag = 1;
     if (((balance > fees_amount) | (oracle_client_code_flag == 1)) & (sender_address.slice_hash() == user_contract_address.slice_hash())){
       if (oracle_client_code_flag == 0) {
         fees_payment(comission_address);
       }
-      ~dump(9999999999); 
       cell mssage = begin_cell()
         .store_uint(0x18, 6)
         .store_slice(sender_address)
