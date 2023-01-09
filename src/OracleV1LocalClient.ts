@@ -1,10 +1,8 @@
 import { SmartContract } from 'ton-contract-executor';
-import { Address, DictBuilder, beginCell, Cell, contractAddress, parseDict, Slice } from 'ton';
-import BN from 'bn.js';
-import { initData, oracleMasterInitData } from './OracleV1.data';
+import { Address, DictBuilder, beginCell, contractAddress } from 'ton';
 import { oracleClientSourceV1 } from './OracleV1.source';
 import { compileFunc } from './utils/compileFunc';
-import { randomAddress, zeroAddress } from './utils/randomAddress';
+import { zeroAddress } from './utils/randomAddress';
 
 export class OracleV1LocalClient {
     private constructor(public readonly contract: SmartContract, public readonly address: Address) {}

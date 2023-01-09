@@ -6,13 +6,14 @@
 #pragma version >=0.2.0;
 const min_to_create_account = 20000000; ;; 0.02 TON
 
-(slice, cell, cell, slice) load_data() inline {
+(slice, cell, cell, slice, int) load_data() inline {
     slice ds = get_data().begin_parse();
     return (
         ds~load_msg_addr(), ;; admin_address
         ds~load_ref(), ;; meta_data
         ds~load_ref(), ;; oracle_client_code
-        ds~load_msg_addr() ;; comission_address
+        ds~load_msg_addr(), ;; comission_address
+        ds~load_coins();; comission_size
     );
 }
 
@@ -54,7 +55,7 @@ cell compose_account_creation(int query_id) inline {
     }
     throw_if(79, msg_value < min_to_create_account);
 
-    (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address) = load_data();
+    (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int comission_size) = load_data();
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
@@ -71,12 +72,12 @@ cell compose_account_creation(int query_id) inline {
     throw(0xffff);
 }
 
-(slice, cell, cell, slice) get_oracle_data() method_id {
-    (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address) = load_data();
-    return (admin_address, meta_data, oracle_client_code, comission_address);
+(slice, cell, cell, slice, int) get_oracle_data() method_id {
+    (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int comission_size) = load_data();
+    return (admin_address, meta_data, oracle_client_code, comission_address, comission_size);
 }
 
 slice get_oracle_client_address(slice owner_address, slice sc_address) method_id {
-     (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address) = load_data();
+     (slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int comission_size) = load_data();
     return calculate_user_oracle_client_address(owner_address, my_address(), sc_address, oracle_client_code, comission_address) ;
 }

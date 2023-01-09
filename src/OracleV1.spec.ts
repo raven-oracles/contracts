@@ -21,6 +21,7 @@ import { OPS } from './OracleV1.data';
 import { randomInt } from 'crypto';
 import { kill } from 'process';
 import { info, warn } from 'console';
+import { oracleClientSourceV1CodeCell } from './OracleV1.source';
 
 function assertNotNull(a: unknown): asserts a {
     expect(a).not.toBeNull();
@@ -44,11 +45,14 @@ function assertCoins(a: BN, b: BN) {
 const END_USER = randomAddress('end_user');
 
 const config = {
+    admin_address: randomAddress('ADMIN_ADDRESS'),
     metadata: {
         name: 'USDT/TON Price Oracle',
         image: 'https://www.linkpicture.com/q/download_183.png', // Image url
         description: 'This is master oracle for USDT/TON price',
     },
+    comission_address: randomAddress('COMISSION_ADDRESS'),
+    comission_size: toNano(0.1),
 };
 
 describe('Oracle v1 Master', () => {
@@ -65,11 +69,21 @@ describe('Oracle v1 Master', () => {
     it('should get oracle master initialization data correctly', async () => {
         const call = await masterContract.contract.invokeGetMethod('get_oracle_data', []);
 
-        const { metadata, address } = parseOracleDetails(call);
+        const { metadata, admin_address, comission_address, comission_size, client_init_code } =
+            parseOracleDetails(call);
 
-        expect(address).toBeDefined();
+        expect(admin_address).toBeDefined();
+        assertAddress(admin_address, config.admin_address);
+
         expect(metadata.name).toEqual('USDT/TON Price Oracle');
         expect(metadata.description).toEqual('This is master oracle for USDT/TON price');
+
+        // TODO: compare the client init code with the oracle client source code
+        // console.log(client_init_code);
+        // console.log(oracleClientSourceV1CodeCell);
+
+        assertAddress(comission_address, config.comission_address);
+        assertCoins(comission_size, config.comission_size);
     });
 
     it('should send signup command and verify the outgoing data', async () => {
@@ -92,6 +106,10 @@ describe('Oracle v1 Master', () => {
         const call = await masterContract.contract.invokeGetMethod('get_oracle_client_address', []);
         // console.log(accountCreationMessage);
     });
+
+    // TODO: tests for comission
+    // fail on not-admin address change comission try and vise versa
+    //
 });
 
 describe('Oracle v1 Client', () => {
@@ -123,7 +141,7 @@ describe('Oracle v1 Client', () => {
                 body: beginCell().storeUint(OPS.Update, 32).storeUint(toNano(tonPrice), 64).endCell(),
             }),
         );
-        
+
         const fetchMethodResult = await clientContract.contract.sendInternalMessage(
             internalMessage({
                 from: senderAddress,
@@ -141,8 +159,8 @@ describe('Oracle v1 Client', () => {
 
     it('should withdrawal all TONs from client contract correctly', async () => {
         clientContract.contract.setC7Config({
-          balance: toNano(20)
-        })
+            balance: toNano(20),
+        });
 
         const withdrawalMethodResult = await clientContract.contract.sendInternalMessage(
             internalMessage({
@@ -153,7 +171,7 @@ describe('Oracle v1 Client', () => {
 
         console.log(withdrawalMethodResult.debugLogs);
         const action = withdrawalMethodResult.actionList[0] as any; // TODO: need to take type from ton lib
-        console.log(action.message.info.value.coins)
+        console.log(action.message.info.value.coins);
         //expect(action.message.info.value.coins).toEqual(toNano(20));
     });
 });
