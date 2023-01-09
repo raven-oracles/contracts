@@ -17,7 +17,7 @@ import { randomAddress, zeroAddress } from './utils/randomAddress';
 import { OracleV1LocalMaster } from './OracleV1LocalMaster';
 import { OracleV1LocalClient } from './OracleV1LocalClient';
 import { convertFromExecutorStack } from './utils/convertFromExecutorStack';
-import { loadAddressesDict, OPS } from './OracleV1.data';
+import { loadAddressesDict, MODES, OPS, OracleClientConfig, OracleMasterConfig } from './OracleV1.data';
 import { randomInt } from 'crypto';
 import { kill } from 'process';
 import { info, warn } from 'console';
@@ -48,24 +48,31 @@ function assertCoins(a: BN, b: BN) {
 
 const END_USER = randomAddress('end_user');
 
-const config = {
+const config: OracleMasterConfig = {
     admin_address: randomAddress('ADMIN_ADDRESS'),
     metadata: {
         name: 'USDT/TON Price Oracle',
         image: 'https://www.linkpicture.com/q/download_183.png', // Image url
         description: 'This is master oracle for USDT/TON price',
     },
-    comission_address: randomAddress('COMISSION_ADDRESS'),
     comission_size: toNano(0.1),
-    whitelisted_oracle_addresses: [randomAddress('WHITELISTED_ORACLE_ADDRESS')], //TODO: switch to dictionary
+    whitelisted_oracle_addresses: [randomAddress('WHITELISTED_ORACLE_ADDRESS')],
+};
+
+const clientConfig: OracleClientConfig = {
+    actual_value: 0,
+    owner_address: randomAddress('owner_address'),
+    oracle_master_address: randomAddress('oracle_master_address'),
+    smartcontract_address: randomAddress('smartcontract_address'),
+    comission_size: toNano(0.1),
+    whitelisted_oracle_addresses: [randomAddress('WHITELISTED_ORACLE_ADDRESS')],
+    mode: MODES.OnDemand,
+    interval: 1,
 };
 
 describe('Oracle v1 Master', () => {
     let masterContract: OracleV1LocalMaster;
     let clientContract: OracleV1LocalClient;
-
-    const getClientContract = async (clientOwnerAddress: Address, oracleMasterAddress: Address) =>
-        await OracleV1LocalClient.create(clientOwnerAddress, oracleMasterAddress);
 
     beforeEach(async () => {
         masterContract = await OracleV1LocalMaster.createFromConfig(config);
@@ -101,78 +108,140 @@ describe('Oracle v1 Master', () => {
         expect(stack.actionList.length).toEqual(1);
 
         const accountCreationMessage = stack.actionList[0];
+        expect(accountCreationMessage.type).toEqual('send_msg');
 
-        // TODO: compare the account creation message destination with the calculated address of oracle client
-        const call = await masterContract.contract.invokeGetMethod('get_oracle_client_address', []);
-        // console.log(accountCreationMessage);
+        // TODO: How to test the init state of the deployed client contract?
     });
 
-    // TODO: tests for comission
-    // fail on not-admin address change try and vise versa
-    // - change comission address
-    // - whitelisted oracle address
+    it('should successfully withdraw requested amount of TONs', async () => {
+        masterContract.contract.setC7Config({
+            balance: toNano(20),
+        });
+
+        const withdrawalMethodResult = await masterContract.contract.sendInternalMessage(
+            internalMessage({
+                from: config.admin_address,
+                value: toNano(0.2),
+                body: beginCell()
+                    .storeUint(OPS.Withdrawal, 32)
+                    .storeUint(0, 64)
+                    .storeCoins(toNano(10))
+                    .endCell(),
+            }),
+        );
+
+        expect(withdrawalMethodResult.type).toEqual('success');
+        if (withdrawalMethodResult.type === 'success') {
+            expect(withdrawalMethodResult.exit_code).toEqual(0);
+            expect(withdrawalMethodResult.actionList.length).toEqual(1);
+            const tx = withdrawalMethodResult.actionList[0];
+            expect(tx.type).toEqual('send_msg');
+            if (tx.type === 'send_msg') {
+                expect(tx.message.info.type).toEqual('internal');
+                if (tx.message.info.type === 'internal') {
+                    assertCoins(tx.message.info.value.coins, new BN(toNano(10)));
+                }
+            }
+        }
+    });
 });
 
 describe('Oracle v1 Client', () => {
     let clientContract: OracleV1LocalClient;
-    const tonPrice = '2.44';
-    const senderAddress = randomAddress('notowner');
+    const tonUsdPrice = 2.44 * 100; // USD price in cents
+    const senderAddress = randomAddress('WHITELISTED_ORACLE_ADDRESS');
 
     beforeEach(async () => {
-        clientContract = await OracleV1LocalClient.create(null, null, senderAddress);
+        clientContract = await OracleV1LocalClient.createFromConfig(clientConfig);
     });
 
     it('should update data on client contract correctly', async () => {
-        await clientContract.contract.sendInternalMessage(
+        const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
                 value: toNano(1),
-                from: senderAddress,
-                body: beginCell().storeUint(OPS.Update, 32).storeUint(toNano(tonPrice), 64).endCell(),
+                from: clientConfig.whitelisted_oracle_addresses[0],
+                body: beginCell()
+                    .storeUint(OPS.NewValue, 32)
+                    .storeUint(0, 64)
+                    .storeUint(tonUsdPrice, 64)
+                    .endCell(),
             }),
         );
 
-        const getMethodResult = await clientContract.contract.invokeGetMethod('get_stored_coin_price', []);
-        expect(getMethodResult.result[0]).toEqual(toNano(tonPrice));
+        expect(result.exit_code).toEqual(0);
+
+        const getMethodResult = await clientContract.contract.invokeGetMethod('get_actual_value', []);
+        expect(getMethodResult.type).toEqual('success');
+        // TODO: How do we test the value is right?
     });
 
-    it('should fetch data from client contract correctly', async () => {
-        await clientContract.contract.sendInternalMessage(
+    it('should fail updating data on client contract with 103 error', async () => {
+        const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
-                from: senderAddress,
-                body: beginCell().storeUint(OPS.Update, 32).storeUint(toNano(tonPrice), 64).endCell(),
+                value: toNano(1),
+                from: randomAddress('UKNOWN_ORACLE_ADDRESS'),
+                body: beginCell()
+                    .storeUint(OPS.NewValue, 32)
+                    .storeUint(0, 64)
+                    .storeUint(tonUsdPrice, 64)
+                    .endCell(),
             }),
         );
 
-        const fetchMethodResult = await clientContract.contract.sendInternalMessage(
-            internalMessage({
-                from: senderAddress,
-                body: beginCell().storeUint(OPS.Fetch, 32).endCell(),
-            }),
-        );
-
-        const action = fetchMethodResult.actionList[0] as any; // TODO: need to take type from ton lib
-        const resultValue = fromNano(
-            parseInt('0x' + String(action.message.body).slice(18).slice(0, -2).toLowerCase()),
-        ); // TODO: find another way to get data from response
-
-        expect(resultValue).toEqual(tonPrice);
+        expect(result.exit_code).toEqual(103);
     });
 
-    it('should withdrawal all TONs from client contract correctly', async () => {
-        clientContract.contract.setC7Config({
+    it('should fail a fetch request with 101 error code - insufficient balance', async () => {
+        const result = await clientContract.contract.sendInternalMessage(
+            internalMessage({
+                from: clientConfig.smartcontract_address,
+                body: beginCell()
+                    .storeUint(OPS.Fetch, 32)
+                    .storeUint(0, 64)
+                    .storeUint(tonUsdPrice, 64)
+                    .endCell(),
+            }),
+        );
+
+        expect(result.exit_code).toEqual(101);
+    });
+
+    it('should fail a fetch request with 103 error code - unallowed sc address for fetch', async () => {
+        clientContract = await OracleV1LocalClient.createFromConfig({
+            ...clientConfig,
             balance: toNano(20),
+            smartcontract_address: randomAddress('NOT_ALLOWED_ADDRESS'),
         });
-
-        const withdrawalMethodResult = await clientContract.contract.sendInternalMessage(
+        const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
                 from: senderAddress,
-                body: beginCell().storeUint(OPS.Withdrawal, 32).endCell(),
+                body: beginCell()
+                    .storeUint(OPS.Fetch, 32)
+                    .storeUint(0, 64)
+                    .storeUint(tonUsdPrice, 64)
+                    .endCell(),
             }),
         );
+        expect(result.exit_code).toEqual(103);
+    });
 
-        console.log(withdrawalMethodResult.debugLogs);
-        const action = withdrawalMethodResult.actionList[0] as any; // TODO: need to take type from ton lib
-        console.log(action.message.info.value.coins);
-        //expect(action.message.info.value.coins).toEqual(toNano(20));
+    it('should successfully fetch actual value', async () => {
+        clientContract = await OracleV1LocalClient.createFromConfig({
+            ...clientConfig,
+            balance: toNano(20),
+            actual_value: 2.44 * 100, //USD price in cents
+        });
+        const result = await clientContract.contract.sendInternalMessage(
+            internalMessage({
+                from: clientConfig.smartcontract_address,
+                body: beginCell()
+                    .storeUint(OPS.Fetch, 32)
+                    .storeUint(0, 64)
+                    .storeUint(tonUsdPrice, 64)
+                    .endCell(),
+            }),
+        );
+        // TODO: test there were actual 2 tx send - comission payment and op::update
+        expect(result.exit_code).toEqual(0);
     });
 });

@@ -53,20 +53,33 @@ cell compose_create_account(int query_id) inline {
         ;; on_bounce(in_msg_body, msg_value);
         return ();
     }
-    throw_if(79, msg_value < min_to_create_account);
 
     (slice admin_address, cell meta_data, cell oracle_client_code, int comission_size, cell whitelisted_oracle_addresses) = load_data();
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
-    slice sc_address = in_msg_body~load_msg_addr();
 
-    int start_balance = msg_value - min_to_create_account;
 
-    ;;TODO: configure proper op codes 
     if (op == op::signup()) {
+        throw_unless(101, msg_value >= min_to_create_account);
+        int start_balance = msg_value - min_to_create_account;
+        slice sc_address = in_msg_body~load_msg_addr();
         sign_up(query_id, sender_address, oracle_client_code, start_balance, sc_address, comission_size, whitelisted_oracle_addresses);
         return ();
+    }
+
+    if (op == op::withdrawal()) {
+        throw_unless(103, sender_address.slice_hash() == admin_address.slice_hash());
+        int withdrawal_amount = in_msg_body~load_coins();
+        throw_unless(101, withdrawal_amount <= my_balance - 1000000);
+        cell withdraw_msg = begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(admin_address)
+            .store_coins(withdrawal_amount)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .end_cell();
+        send_raw_message(withdraw_msg, 64); ;; withdrawal entire balance
+        return();
     }
 
     throw(0xffff);

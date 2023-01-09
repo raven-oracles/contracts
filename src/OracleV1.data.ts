@@ -19,15 +19,6 @@ import { randomAddress } from './utils/randomAddress';
 const ONCHAIN_CONTENT_PREFIX = 0x00;
 const SNAKE_PREFIX = 0x00;
 
-const oracleMetadataParams = {
-    owner: Address.parse('EQD4gS-Nj2Gjr2FYtg-s3fXUvjzKbzHGZ5_1Xe_V0-GCp0p2'),
-    name: 'USDT/TON Price Oracle',
-    image: 'https://www.linkpicture.com/q/download_183.png', // Image url
-    description: 'This is master oracle for USDT/TON price',
-};
-
-// TODO: add comission size here?
-
 export type OracleMetaDataKeys = 'name' | 'description' | 'image';
 
 const oracleOnChainMetadataSpec: {
@@ -153,15 +144,46 @@ export function loadAddressesDict(dict: Cell): Address[] {
     const addressesDict = parseDict(dict.beginParse(), 256, i => i.readUint(32).toNumber());
     return [...addressesDict.entries()].map(([address, i]) => new Address(0, new BN(address).toBuffer()));
 }
-// TODO: Remove?
-// return the init Cell of the contract storage (according to load_data() contract method)
-// export function initData() {
-//     return oracleMasterInitData({
-//         name: oracleMetadataParams.name,
-//         image: oracleMetadataParams.image,
-//         description: oracleMetadataParams.description,
-//     });
-// }
+
+export interface OracleMasterConfig {
+    admin_address: Address;
+    metadata: {
+        name: string;
+        image: string;
+        description: string;
+    };
+    comission_size: BN;
+    whitelisted_oracle_addresses: Address[];
+}
+
+export interface OracleClientConfig {
+    actual_value: number;
+    owner_address: Address;
+    oracle_master_address: Address;
+    smartcontract_address: Address;
+    comission_size: BN;
+    mode: number;
+    interval: number;
+    whitelisted_oracle_addresses: Address[];
+    balance?: BN;
+}
+
+export function oracleClientInitData(config: OracleClientConfig): Cell {
+    return beginCell()
+        .storeUint(config.actual_value, 64)
+        .storeRef(
+            beginCell()
+                .storeAddress(config.owner_address)
+                .storeAddress(config.oracle_master_address)
+                .storeAddress(config.smartcontract_address)
+                .endCell(),
+        )
+        .storeCoins(config.comission_size)
+        .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
+        .storeUint(config.mode, 32)
+        .storeUint(config.interval, 32)
+        .endCell();
+}
 
 // return the op that should be sent to the contract on deployment, can be "null" to send an empty message
 export function initMessage() {
@@ -175,4 +197,10 @@ export enum OPS {
     Fetch = 0x82e96343,
     Update = 0x98253578,
     Withdrawal = 0x6d2d3b45,
+    NewValue = 0xe5e11be9,
+}
+
+export enum MODES {
+    OnDemand = 0x8660a9dc,
+    Subscription = 0xa3c664d3,
 }

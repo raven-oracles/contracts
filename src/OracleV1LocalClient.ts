@@ -3,40 +3,17 @@ import { Address, DictBuilder, beginCell, contractAddress } from 'ton';
 import { oracleClientSourceV1 } from './OracleV1.source';
 import { compileFunc } from './utils/compileFunc';
 import { zeroAddress } from './utils/randomAddress';
+import BN from 'bn.js';
+import { OracleClientConfig, oracleClientInitData } from './OracleV1.data';
 
 export class OracleV1LocalClient {
     private constructor(public readonly contract: SmartContract, public readonly address: Address) {}
 
-    static async create(
-        walletOwnerAddress?: Address | null,
-        jettonMasterAddress?: Address | null,
-        senderAddress?: Address,
-    ) {
+    static async createFromConfig(config: OracleClientConfig) {
         const code = await compileFunc(oracleClientSourceV1());
 
-        const contract = !senderAddress
-            ? await SmartContract.fromCell(
-                  code.cell,
-                  beginCell()
-                      .storeCoins(0)
-                      .storeAddress(walletOwnerAddress ? walletOwnerAddress : zeroAddress)
-                      .storeAddress(jettonMasterAddress ? jettonMasterAddress : zeroAddress)
-                      .storeRef(code.cell)
-                      .endCell(),
-              )
-            : await SmartContract.fromCell(
-                  code.cell,
-                  beginCell()
-                      .storeUint(1, 1)
-                      .storeAddress(senderAddress)
-                      .storeRef(beginCell().endCell())
-                      .storeRef(beginCell().storeUint(0, 8).endCell())
-                      .storeAddress(senderAddress)
-                      .storeRef(beginCell().storeUint(1, 64).endCell())
-                      .storeRef(beginCell().storeDict(new DictBuilder(256).endDict()).endCell())
-                      .storeAddress(senderAddress)
-                      .endCell(),
-              );
+        const data = oracleClientInitData(config);
+        const contract = await SmartContract.fromCell(code.cell, data);
 
         const address = contractAddress({
             workchain: 0,
@@ -46,6 +23,7 @@ export class OracleV1LocalClient {
 
         contract.setC7Config({
             myself: address,
+            balance: config.balance || new BN(0),
         });
 
         return new OracleV1LocalClient(contract, address);
