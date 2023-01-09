@@ -18,9 +18,9 @@ const min_to_create_account = 20000000; ;; 0.02 TON
     );
 }
 
-cell compose_account_creation(int query_id) inline {
+cell compose_create_account(int query_id) inline {
     return begin_cell()
-        .store_uint(op::account_creation(), 32)
+        .store_uint(op::create_account(), 32)
         .store_uint(query_id, 64)
         .end_cell();
 }
@@ -35,7 +35,7 @@ cell compose_account_creation(int query_id) inline {
                 .store_coins(start_balance)
                 .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
                 .store_ref(state_init)
-                .store_ref(compose_account_creation(query_id));
+                .store_ref(compose_create_account(query_id));
 
     ;; TODO: decide who pays for transfer fees
     send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
@@ -65,7 +65,7 @@ cell compose_account_creation(int query_id) inline {
     int start_balance = msg_value - min_to_create_account;
 
     ;;TODO: configure proper op codes 
-    if (op == 1) {
+    if (op == op::signup()) {
         sign_up(query_id, sender_address, oracle_client_code, start_balance, sc_address, comission_address);
         return ();
     }

@@ -172,8 +172,8 @@ export function initMessage() {
 
 export enum OPS {
     // Excesses = 0xd53276db,
-    Signup = 1,
-    AccountCreation = 2,
+    Signup = 0x4ea31eef,
+    CreateAccount = 0x2f2067c2,
     Fetch = 0x82e96343,
     Update = 0x98253578,
     Withdrawal = 0x6d2d3b45,
