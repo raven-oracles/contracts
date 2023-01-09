@@ -1,48 +1,135 @@
+(slice, int) dict_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET" "NULLSWAPIFNOT";
+
+const fees_amount = 100; ;; 0.02 TON
+
 (int) get_stored_coin_price() method_id {
-  slice data = get_data().begin_parse();
-  return (data~load_uint(64));
+  slice ds = get_data().begin_parse();
+        ds~load_uint(1); ;; whitelist_ignore
+        ds~load_msg_addr(); ;; admin_address
+        ds~load_ref(); ;; meta_data
+        ds~load_ref(); ;; oracle_client_code
+        ds~load_msg_addr(); ;; comission_address
+  return (ds~load_ref().begin_parse().preload_uint(64));
 }
 
-() recv_internal (cell in_msg, slice in_msg_body) {
+(int, slice, cell, cell, slice, int, cell, slice) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_uint(1), ;; whitelist_ignore
+        ds~load_msg_addr(), ;; admin_address
+        ds~load_ref(), ;; meta_data
+        ds~load_ref(), ;; oracle_client_code
+        ds~load_msg_addr(), ;; comission_address
+        ds~load_ref().begin_parse().preload_uint(64), ;; coin_price
+        ds~load_ref().begin_parse().preload_dict(), ;; whitelisted oracle addresses
+        ds~load_msg_addr() ;; user_contract_address
+    );
+}
+
+() save_data (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, cell whitelisted_oracle_addresses, slice user_contract_address) impure {
+  cell data = begin_cell()
+      .store_uint(whitelist_ignore, 1)
+      .store_slice(admin_address)
+      .store_ref(meta_data)
+      .store_ref(oracle_client_code)
+      .store_slice(comission_address)
+      .store_ref(begin_cell().store_uint(coin_price, 64).end_cell())
+      .store_ref(begin_cell().store_dict(whitelisted_oracle_addresses).end_cell())
+      .store_slice(user_contract_address)
+      .end_cell();
+    
+  set_data(data);
+
+  return();
+}
+
+() fees_payment (slice comission_address) {
+  cell fees_mssage = begin_cell()
+      .store_uint(0x18, 6)
+      .store_slice(comission_address)
+      .store_coins(fees_amount)
+      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+      .end_cell();
+  send_raw_message(fees_mssage, 64); ;; pay fees
+}
+
+() recv_internal (int my_balance, int msg_value, cell in_msg, slice in_msg_body) impure {
   if (in_msg_body.slice_empty?()) {
     return ();
   }
   
+  [int balance, cell balance_cell] = get_balance();
+
+  ~dump(balance);
+  ~dump(my_balance);
+  ~dump(msg_value);
+
   slice cs = in_msg.begin_parse();
   int flags = cs~load_uint(4);
   slice sender_address = cs~load_msg_addr();
   int op = in_msg_body~load_uint(32);
-  
-  ;; TODO: need to add address checker (if requesting address == stored user address)
-  if (op == op::fetch()) {
-    int coin_price = get_stored_coin_price();
-    ;; TODO: add fees payment to treasure
-    
-    cell mssage = begin_cell()
-      .store_uint(0x18, 6)
-      .store_slice(sender_address)
-      .store_coins(0)
-      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1)
-      .store_uint(1, 1)
-      .store_ref(begin_cell().store_uint(0, 32).store_uint(coin_price, 64).end_cell())
-      .end_cell();
-    send_raw_message(mssage, 64);
-  }
-  
-  return(); 
-}
 
-() recv_external(slice in_msg_body) impure {
-  if (in_msg_body.slice_empty?()) {
-    return ();
-  }
- 
-  int op = in_msg_body~load_uint(32);
-
-  ;; TODO: need to add address checker that sender_address == stored server address
+  (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, cell whitelisted_oracle_addresses, slice user_contract_address) = load_data();  
+  slice oracle_client_code_flag_parsed = oracle_client_code.begin_parse(); 
+  int oracle_client_code_flag = oracle_client_code_flag_parsed~load_uint(8); ;; if flag == 0 then ondemand / if flag == 1 then subscription
+  
   if (op == op::update()) {
-    int coin_price = in_msg_body~load_uint(64);
-    cell data = begin_cell().store_uint(coin_price, 64).end_cell();
-    set_data(data);
+    [int balance, cell balance_cell] = get_balance();
+    if ((balance > fees_amount) | (oracle_client_code_flag == 0)){
+      var (_, success?) = whitelisted_oracle_addresses.dict_get?(8 + 256, sender_address);
+      if (success? | (whitelist_ignore == 1)) {
+        if (oracle_client_code_flag == 1) {
+          fees_payment(comission_address);
+        }
+        int new_coin_price = in_msg_body~load_uint(64);
+        save_data(whitelist_ignore, admin_address, meta_data, oracle_client_code, comission_address, new_coin_price, whitelisted_oracle_addresses, user_contract_address); 
+        return();
+      } else {
+        throw(0xffff);
+        return();
+      }
+    } else {
+      throw(0xffff);
+      return();
+    }
   }
+
+  if (op == op::fetch()) {
+    [int balance, cell balance_cell] = get_balance();
+    if (((balance > fees_amount) | (oracle_client_code_flag == 1)) & (sender_address.slice_hash() == user_contract_address.slice_hash())){
+      if (oracle_client_code_flag == 0) {
+        fees_payment(comission_address);
+      }
+      cell mssage = begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(sender_address)
+        .store_coins(0)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1)
+        .store_uint(1, 1)
+        .store_ref(begin_cell().store_uint(0, 32).store_uint(coin_price, 64).end_cell())
+        .end_cell();
+      send_raw_message(mssage, 64); ;; return coin_price to fetch request
+      return();
+    } else {
+      throw(0xffff);
+      return();
+    }
+  }
+  
+  if (op == op::withdrawal()) {
+    if (sender_address.slice_hash() == user_contract_address.slice_hash()) {
+      cell mssage = begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(sender_address)
+        .store_coins(0)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .end_cell();
+      send_raw_message(mssage, 128); ;; withdrawal entire balance
+      return();
+    } else {
+      throw(0xfffe);
+      return ();
+    }
+  }
+  throw(0xffff);
 }
