@@ -17,7 +17,7 @@ import { randomAddress, zeroAddress } from './utils/randomAddress';
 import { OracleV1LocalMaster } from './OracleV1LocalMaster';
 import { OracleV1LocalClient } from './OracleV1LocalClient';
 import { convertFromExecutorStack } from './utils/convertFromExecutorStack';
-import { OPS } from './OracleV1.data';
+import { loadAddressesDict, OPS } from './OracleV1.data';
 import { randomInt } from 'crypto';
 import { kill } from 'process';
 import { info, warn } from 'console';
@@ -38,6 +38,10 @@ function assertAddress(a: unknown, b: Address) {
     }
 }
 
+function assertAddressArray(a: Address[], b: Address[]) {
+    expect(a.map(ad => ad.toString()).sort()).toEqual(b.map(ad => ad.toString()).sort());
+}
+
 function assertCoins(a: BN, b: BN) {
     expect(a.eq(b)).toBeTruthy();
 }
@@ -53,7 +57,7 @@ const config = {
     },
     comission_address: randomAddress('COMISSION_ADDRESS'),
     comission_size: toNano(0.1),
-    whitelisted_oracle_address: randomAddress('WHITELISTED_ORACLE_ADDRESS'), //TODO: switch to dictionary
+    whitelisted_oracle_addresses: [randomAddress('WHITELISTED_ORACLE_ADDRESS')], //TODO: switch to dictionary
 };
 
 describe('Oracle v1 Master', () => {
@@ -76,7 +80,7 @@ describe('Oracle v1 Master', () => {
             comission_address,
             comission_size,
             client_init_code,
-            whitelisted_oracle_address,
+            whitelisted_oracle_addresses,
         } = parseOracleDetails(call);
 
         expect(admin_address).toBeDefined();
@@ -91,7 +95,8 @@ describe('Oracle v1 Master', () => {
 
         assertAddress(comission_address, config.comission_address);
         assertCoins(comission_size, config.comission_size);
-        assertAddress(whitelisted_oracle_address, config.whitelisted_oracle_address);
+
+        assertAddressArray(whitelisted_oracle_addresses, config.whitelisted_oracle_addresses);
     });
 
     it('should send signup command and verify the outgoing data', async () => {

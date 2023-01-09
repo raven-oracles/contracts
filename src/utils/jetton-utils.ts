@@ -1,6 +1,6 @@
 import BN from 'bn.js';
 import { Address, Cell, Slice } from 'ton';
-import { OracleMetaDataKeys, parseOracleMetadataCell } from '../OracleV1.data';
+import { loadAddressesDict, OracleMetaDataKeys, parseOracleMetadataCell } from '../OracleV1.data';
 
 interface OracleDetails {
     admin_address: Address;
@@ -8,7 +8,7 @@ interface OracleDetails {
     client_init_code: Cell;
     comission_address: Address;
     comission_size: BN;
-    whitelisted_oracle_address: Address;
+    whitelisted_oracle_addresses: any;
 }
 export function parseOracleDetails(execResult: { result: any[] }): OracleDetails {
     return {
@@ -17,7 +17,7 @@ export function parseOracleDetails(execResult: { result: any[] }): OracleDetails
         client_init_code: execResult.result[2] as Cell,
         comission_address: (execResult.result[3] as Slice)?.readAddress() as Address,
         comission_size: execResult.result[4] as BN,
-        whitelisted_oracle_address: (execResult.result[5] as Slice)?.readAddress() as Address,
+        whitelisted_oracle_addresses: loadAddressesDict(execResult.result[5] as Cell),
     };
 }
 

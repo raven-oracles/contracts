@@ -8,6 +8,8 @@ import {
     beginCell,
     Slice,
     toNano,
+    DictBuilder,
+    parseDict,
 } from 'ton';
 import BN from 'bn.js';
 import { oracleMasterSourceV1CodeCell, oracleClientSourceV1CodeCell } from './OracleV1.source';
@@ -127,7 +129,7 @@ export function oracleMasterInitData(config: {
     };
     comission_address: Address;
     comission_size: BN;
-    whitelisted_oracle_address: Address;
+    whitelisted_oracle_addresses: Address[];
 }): Cell {
     return beginCell()
         .storeAddress(config.admin_address)
@@ -135,8 +137,23 @@ export function oracleMasterInitData(config: {
         .storeRef(oracleMasterSourceV1CodeCell)
         .storeAddress(config.comission_address)
         .storeCoins(config.comission_size)
-        .storeAddress(config.whitelisted_oracle_address)
+        .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
         .endCell();
+}
+
+function buildAddressesDict(addresses: Address[]): Cell {
+    const addressesMap = new Map(addresses.map((address, i) => [new BN(address.hash).toString(10), i]));
+    const addressesDict = serializeDict(addressesMap, 256, (i, cell) => cell.bits.writeUint(i, 32));
+    return addressesDict;
+}
+
+export function loadAddressesDict(dict: Cell): Address[] {
+    if (!dict) {
+        return [];
+    }
+
+    const addressesDict = parseDict(dict.beginParse(), 256, i => i.readUint(32).toNumber());
+    return [...addressesDict.entries()].map(([address, i]) => new Address(0, new BN(address).toBuffer()));
 }
 // TODO: Remove?
 // return the init Cell of the contract storage (according to load_data() contract method)
