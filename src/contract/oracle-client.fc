@@ -3,27 +3,22 @@
 const fees_amount = 100; ;; 0.02 TON
 
 (int) get_stored_coin_price() method_id {
-  slice ds = get_data().begin_parse();
-        ds~load_uint(1); ;; whitelist_ignore
-        ds~load_msg_addr(); ;; admin_address
-        ds~load_ref(); ;; meta_data
-        ds~load_ref(); ;; oracle_client_code
-        ds~load_msg_addr(); ;; comission_address
-  return (ds~load_ref().begin_parse().preload_uint(64));
+  (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, cell whitelisted_oracle_addresses, slice user_contract_address) = load_data();  
+  return (coin_price);
 }
 
 (int, slice, cell, cell, slice, int, cell, slice) load_data() inline {
-    slice ds = get_data().begin_parse();
-    return (
-        ds~load_uint(1), ;; whitelist_ignore
-        ds~load_msg_addr(), ;; admin_address
-        ds~load_ref(), ;; meta_data
-        ds~load_ref(), ;; oracle_client_code
-        ds~load_msg_addr(), ;; comission_address
-        ds~load_ref().begin_parse().preload_uint(64), ;; coin_price
-        ds~load_ref().begin_parse().preload_dict(), ;; whitelisted oracle addresses
-        ds~load_msg_addr() ;; user_contract_address
-    );
+  slice ds = get_data().begin_parse();
+  return (
+    ds~load_uint(1), ;; whitelist_ignore
+    ds~load_msg_addr(), ;; admin_address
+    ds~load_ref(), ;; meta_data
+    ds~load_ref(), ;; oracle_client_code
+    ds~load_msg_addr(), ;; comission_address
+    ds~load_ref().begin_parse().preload_uint(64), ;; coin_price
+    ds~load_ref().begin_parse().preload_dict(), ;; whitelisted oracle addresses
+    ds~load_msg_addr() ;; user_contract_address
+  );
 }
 
 () save_data (int whitelist_ignore, slice admin_address, cell meta_data, cell oracle_client_code, slice comission_address, int coin_price, cell whitelisted_oracle_addresses, slice user_contract_address) impure {
