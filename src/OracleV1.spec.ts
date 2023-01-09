@@ -85,17 +85,11 @@ describe('Oracle v1 Master', () => {
 
         expect(admin_address).toBeDefined();
         assertAddress(admin_address, config.admin_address);
-
         expect(metadata.name).toEqual('USDT/TON Price Oracle');
         expect(metadata.description).toEqual('This is master oracle for USDT/TON price');
-
-        // TODO: compare the client init code with the oracle client source code
-        // console.log(client_init_code);
-        // console.log(oracleClientSourceV1CodeCell);
-
+        expect(client_init_code.hash()).toEqual(oracleClientSourceV1CodeCell.hash());
         assertAddress(comission_address, config.comission_address);
         assertCoins(comission_size, config.comission_size);
-
         assertAddressArray(whitelisted_oracle_addresses, config.whitelisted_oracle_addresses);
     });
 

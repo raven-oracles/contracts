@@ -134,7 +134,7 @@ export function oracleMasterInitData(config: {
     return beginCell()
         .storeAddress(config.admin_address)
         .storeRef(buildOracleMetadataCell(config.metadata))
-        .storeRef(oracleMasterSourceV1CodeCell)
+        .storeRef(oracleClientSourceV1CodeCell)
         .storeAddress(config.comission_address)
         .storeCoins(config.comission_size)
         .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
