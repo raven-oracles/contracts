@@ -15,7 +15,6 @@ export class OracleV1LocalMaster {
             image: string;
             description: string;
         };
-        comission_address: Address;
         comission_size: BN;
         whitelisted_oracle_addresses: Address[];
     }) {

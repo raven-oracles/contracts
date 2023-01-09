@@ -6,7 +6,6 @@ interface OracleDetails {
     admin_address: Address;
     metadata: { [s in OracleMetaDataKeys]?: string };
     client_init_code: Cell;
-    comission_address: Address;
     comission_size: BN;
     whitelisted_oracle_addresses: any;
 }
@@ -15,9 +14,8 @@ export function parseOracleDetails(execResult: { result: any[] }): OracleDetails
         admin_address: (execResult.result[0] as Slice)?.readAddress() as Address,
         metadata: parseOracleMetadataCell(execResult.result[1]),
         client_init_code: execResult.result[2] as Cell,
-        comission_address: (execResult.result[3] as Slice)?.readAddress() as Address,
-        comission_size: execResult.result[4] as BN,
-        whitelisted_oracle_addresses: loadAddressesDict(execResult.result[5] as Cell),
+        comission_size: execResult.result[3] as BN,
+        whitelisted_oracle_addresses: loadAddressesDict(execResult.result[4] as Cell),
     };
 }
 

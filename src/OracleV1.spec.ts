@@ -74,21 +74,14 @@ describe('Oracle v1 Master', () => {
     it('should get oracle master initialization data correctly', async () => {
         const call = await masterContract.contract.invokeGetMethod('get_oracle_data', []);
 
-        const {
-            metadata,
-            admin_address,
-            comission_address,
-            comission_size,
-            client_init_code,
-            whitelisted_oracle_addresses,
-        } = parseOracleDetails(call);
+        const { metadata, admin_address, comission_size, client_init_code, whitelisted_oracle_addresses } =
+            parseOracleDetails(call);
 
         expect(admin_address).toBeDefined();
         assertAddress(admin_address, config.admin_address);
         expect(metadata.name).toEqual('USDT/TON Price Oracle');
         expect(metadata.description).toEqual('This is master oracle for USDT/TON price');
         expect(client_init_code.hash()).toEqual(oracleClientSourceV1CodeCell.hash());
-        assertAddress(comission_address, config.comission_address);
         assertCoins(comission_size, config.comission_size);
         assertAddressArray(whitelisted_oracle_addresses, config.whitelisted_oracle_addresses);
     });

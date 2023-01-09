@@ -127,7 +127,6 @@ export function oracleMasterInitData(config: {
     metadata: {
         [s in OracleMetaDataKeys]?: string;
     };
-    comission_address: Address;
     comission_size: BN;
     whitelisted_oracle_addresses: Address[];
 }): Cell {
@@ -135,7 +134,6 @@ export function oracleMasterInitData(config: {
         .storeAddress(config.admin_address)
         .storeRef(buildOracleMetadataCell(config.metadata))
         .storeRef(oracleClientSourceV1CodeCell)
-        .storeAddress(config.comission_address)
         .storeCoins(config.comission_size)
         .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
         .endCell();
