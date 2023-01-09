@@ -53,6 +53,7 @@ const config = {
     },
     comission_address: randomAddress('COMISSION_ADDRESS'),
     comission_size: toNano(0.1),
+    whitelisted_oracle_address: randomAddress('WHITELISTED_ORACLE_ADDRESS'), //TODO: switch to dictionary
 };
 
 describe('Oracle v1 Master', () => {
@@ -69,8 +70,14 @@ describe('Oracle v1 Master', () => {
     it('should get oracle master initialization data correctly', async () => {
         const call = await masterContract.contract.invokeGetMethod('get_oracle_data', []);
 
-        const { metadata, admin_address, comission_address, comission_size, client_init_code } =
-            parseOracleDetails(call);
+        const {
+            metadata,
+            admin_address,
+            comission_address,
+            comission_size,
+            client_init_code,
+            whitelisted_oracle_address,
+        } = parseOracleDetails(call);
 
         expect(admin_address).toBeDefined();
         assertAddress(admin_address, config.admin_address);
@@ -84,6 +91,7 @@ describe('Oracle v1 Master', () => {
 
         assertAddress(comission_address, config.comission_address);
         assertCoins(comission_size, config.comission_size);
+        assertAddress(whitelisted_oracle_address, config.whitelisted_oracle_address);
     });
 
     it('should send signup command and verify the outgoing data', async () => {
@@ -108,8 +116,9 @@ describe('Oracle v1 Master', () => {
     });
 
     // TODO: tests for comission
-    // fail on not-admin address change comission try and vise versa
-    //
+    // fail on not-admin address change try and vise versa
+    // - change comission address
+    // - whitelisted oracle address
 });
 
 describe('Oracle v1 Client', () => {

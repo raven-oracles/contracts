@@ -17,6 +17,7 @@ export class OracleV1LocalMaster {
         };
         comission_address: Address;
         comission_size: BN;
+        whitelisted_oracle_address: Address;
     }) {
         const code = await compileFunc(oracleMasterSourceV1());
 

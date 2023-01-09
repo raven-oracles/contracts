@@ -127,6 +127,7 @@ export function oracleMasterInitData(config: {
     };
     comission_address: Address;
     comission_size: BN;
+    whitelisted_oracle_address: Address;
 }): Cell {
     return beginCell()
         .storeAddress(config.admin_address)
@@ -134,8 +135,10 @@ export function oracleMasterInitData(config: {
         .storeRef(oracleMasterSourceV1CodeCell)
         .storeAddress(config.comission_address)
         .storeCoins(config.comission_size)
+        .storeAddress(config.whitelisted_oracle_address)
         .endCell();
 }
+// TODO: Remove?
 // return the init Cell of the contract storage (according to load_data() contract method)
 // export function initData() {
 //     return oracleMasterInitData({
