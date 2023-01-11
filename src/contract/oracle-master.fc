@@ -59,7 +59,11 @@ cell compose_create_account(int query_id) inline {
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
-
+    if (op == op::update()) {
+      throw_unless(103, )
+      return (); 
+    }
+ 
     if (op == op::signup()) {
         throw_unless(101, msg_value >= min_to_create_account);
         int start_balance = msg_value - min_to_create_account;
