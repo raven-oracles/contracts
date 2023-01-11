@@ -76,7 +76,6 @@ _ load_data() inline {
 
   (int actual_value, slice owner_address, slice master_address, slice sc_address, int comission_size, cell whitelisted_oracle_addresses, int mode, int interval) = load_data();  
 
-
   if (op == op::new_value()) {
     var (_, address_allowed?) = whitelisted_oracle_addresses.udict_get?(256, addr_hash);
     throw_unless(103, address_allowed?); ;; permission denied
@@ -95,7 +94,7 @@ _ load_data() inline {
     
     return();
   }
-
+;; не сделал разделение на ондеманд и субскрип
   throw(0xffff);
 }
 
