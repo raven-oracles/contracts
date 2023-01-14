@@ -1,42 +1,38 @@
-import { Cell } from 'ton';
-import { combineFunc } from './utils/combineFunc';
+import { Cell } from "ton";
+import { combineFunc } from "./utils/combineFunc";
 
 export const oracleMasterSourceV1 = () => {
     return combineFunc(__dirname, [
-        './contract/imports/stdlib.fc',
-        './contract/imports/params.fc',
-        './contract/imports/constants.fc',
-        './contract/imports/op-codes.fc',
-        './contract/imports/modes.fc',
-        './contract/imports/utils.fc',
-        './contract/imports/discovery-params.fc',
-        './contract/oracle-master.fc',
-    ]);
-};
+      './contract/imports/stdlib.fc',
+      './contract/imports/params.fc',
+      './contract/imports/constants.fc',
+      './contract/imports/op-codes.fc',
+      './contract/imports/modes.fc',
+      './contract/imports/utils.fc',
+      './contract/imports/discovery-params.fc',
+      './contract/oracle-master.fc',
+    ])
+  }
 
 const oracleMasterSourceV1CodeBoc =
-    'te6ccsECCAEAASAAAA0AEgAXAF8AbgBzANEBIAEU/wD0pBP0vPLICwECAWIFAgIBIAQDAIu85NdqJofSBqan0gGDYRfBQqkBk4KhIBqhIoGjhkZZ+oAeeLAOeLZgDni2SQ5GWCifoACXoAZYBk/IA4OmRlgWUD5f/k6EABm+149qJofSBqan0gGEAgLMBwYAt7XwUCCKBqCqZOCoSAaoSKBo4ZGWfqAHniwDni2YA54tkkORlgon6AAl6AGWAZJB8gDg6ZGWBZQPl/+ToAblkZY/ln+S7wAxkZYKoAueLKAH9AQnltYlmZmS4/YBAJnZmRY4BJL4HwaGmB/SAYALjYSS+B8BDBBJiWgFz5aCf2omh9IGpqfSAYNhECaY/pn/0gGALBBJiWgFCBYADLgogaIJh4BXAvg0IH+XhDtwRQo=';
+  'te6ccsECCgEAAZcAAA0AEgArADAANQBMAMUBQwFyAZcBFP8A9KQT9LzyyAsBAgFiAwIALaC149qJofSBqan0AagDoegKA6Z/pn5hAgLMBwQCAUgGBQApTIUAfPFhXME8wB+gLMyz/LP8ntVIAO1Tf4KECFAnACyFjPFssfySHIywUT9AAS9ADLAMkg+QBwdMjLAsoHy//J0IIQhmCp3HD4KBB5EGgFBBA5SqrIUAfPFlAFzxZQA88WyYIQLyBnwsjLH8zLP8zLH8sfyz/Jd4AYyMsFUATPFlj6AhLLaxLMzMlx+wCALz2QY4BJL4JwAOhpgf0gGAC42EkvgnB2omh9IGpqfQBqAOh6AoDpn+mfmARpj+mfwQhMEpq8KRhdRw8dLZwcKKPAgIR6BTfQmPlwM4Jpn5giGCobKQR4BS3wG8EIJ1GPd6kQXXGBCq+CmhpBCDaWnaKJ3XGBL4JCB/l4QJCABa+QEh+QG68uBnAfoAMAKCCA9CQKFSILvy4GVwgBjIywVYzxZY+gLLasmAQPsAAEYxNjknggkxLQC+8uBlB4IJMS0AoQP6QDAIpAheJEUTQUTwCbvYaRc='
 
-export const oracleMasterSourceV1CodeCell = Cell.fromBoc(
-    Buffer.from(oracleMasterSourceV1CodeBoc, 'base64'),
-)[0];
+export const oracleMasterSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleMasterSourceV1CodeBoc, 'base64'))[0];
 
 export const oracleClientSourceV1 = () => {
     return combineFunc(__dirname, [
-        './contract/imports/stdlib.fc',
-        './contract/imports/params.fc',
-        './contract/imports/constants.fc',
-        './contract/imports/op-codes.fc',
-        './contract/imports/modes.fc',
-        './contract/imports/utils.fc',
-        './contract/imports/discovery-params.fc',
-        './contract/oracle-client.fc',
-    ]);
-};
+      './contract/imports/stdlib.fc',
+      './contract/imports/params.fc',
+      './contract/imports/constants.fc',
+      './contract/imports/op-codes.fc',
+      './contract/imports/modes.fc',
+      './contract/imports/utils.fc',
+      './contract/imports/discovery-params.fc',
+      './contract/oracle-client.fc',
+    ])
+  }
 
 const oracleClientSourceV1CodeBoc =
-    'te6ccsECCQEAAXAAAA0AEgAtADIAWADZAOABLAFwART/APSkE/S88sgLAQIBYgMCADGhLP/aiaGmAGP0gGOoY6hj9IBjqGGhrhZ/AgLMBQQAR7IDkegBkgWRln+SD5GWAKANniwpmCWYA54sJ5glmAOeLZPaqQP32QY4BIrfAA6GmBmP0gGADpj/aiaGmAfSBqan0gagDoa4WfgOoA6HoCgP0gGBJoaYOYQQhMEpq8KVhdcYEYGLYxQQhBdLGhqRhdcYEYwQg2lp2iiV1HEhD8gID8gN1HCbhADGRlgqxnixD9AWW1ZMGDfYBwGEEAf/95eHBAgHBgAKW4QP8vAAlDL4J28iMIIJMS0AvH+xI/kBA/kBE7oSsI4qghJUC+P//iAwcMjLH8s/yXFwgBjIywVQBM8WI/oCE8tpEssAzMmAQPsA4FuED/LwAIQzOfgnbyIwggkxLQC8IsAAsY4oUZmBAQj0Cm+hMSbAAbGOEcABMAXTPzAQRxA2QBVQQ/AJ4F8JhA/y8OBfCoQP8vBJlsb9';
+  'te6ccsECBwEAAVEAAA0AEgA8AEEAbADrAVEBFP8A9KQT9LzyyAsBAgFiAwIAT6HZldqJoaZ/qAOh9IH0gfSAYAf0AagDoegKA6Y/pj+mPmAgziCsvhECAswFBABRsgeR6AGTkKARniygDZ4soAmeLZINkZZ+LZgD9AQnmCWWP5Y/lj+T2qkB99thEQY4BIrfB8E7eRGAFoaYGY/SAYAOmP6Z+YwQgXkDPhKRBdRxiYmXaiaH0gaY+YAXyAgPyA3XlwM4DqAOh9IH0gfSAYAemf6mmP6Y/pn5gECDOIK3gE8HaiaGmf6gDofSB9IH0gGAH9AGoA6HoCgOmP6Y/pj5gIM4grQGAMg4ghDl4RvpUqC6jhk5Ogj5ASP5Abry4GcF0z8wCBA3QGYFBPAJ4F8DbEKCEILpY0NSMLqOEzJRMbkx8tBl+QEh+QFsErry4GfgMDOCEG0tO0W6myD5ATEB+QG68uBn4FuED/LwaCl7qg=='
 
-export const oracleClientSourceV1CodeCell = Cell.fromBoc(
-    Buffer.from(oracleClientSourceV1CodeBoc, 'base64'),
-)[0];
+export const oracleClientSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleClientSourceV1CodeBoc, 'base64'))[0]

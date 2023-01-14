@@ -6,38 +6,85 @@
 #pragma version >=0.2.0;
 const min_to_create_account = 20000000; ;; 0.02 TON
 
-(slice, cell, cell, int, cell) load_data() inline {
+(slice, cell, cell, int, cell, int, int) load_data() inline {
     slice ds = get_data().begin_parse();
     return (
         ds~load_msg_addr(), ;; admin_address
         ds~load_ref(), ;; meta_data
         ds~load_ref(), ;; oracle_client_code
         ds~load_coins(),;; comission_size
-        ds~load_ref().begin_parse().preload_dict() ;; whitelisted_oracle_addresses
+        ds~load_ref().begin_parse().preload_dict(), ;; whitelisted_oracle_addresses
+        ds~load_uint(64), ;; number_of_clients
+        ds~load_uint(64) ;; actual_value
     );
 }
 
-cell compose_create_account(int query_id) inline {
-    return begin_cell()
-        .store_uint(op::create_account(), 32)
-        .store_uint(query_id, 64)
-        .end_cell();
+cell compose_create_account(int actual_value, slice owner_address, slice oracle_master_address, slice sc_address, int comission_size, cell whitelisted_oracle_addresses, int mode, int interval) inline {
+  return begin_cell()
+            .store_uint(op::create_account(), 32)
+            .store_ref(begin_cell().store_slice(owner_address).store_slice(oracle_master_address).store_slice(sc_address).end_cell())
+            .store_coins(comission_size)
+            .store_ref(whitelisted_oracle_addresses)
+            .store_uint(mode, 32)
+            .store_uint(interval, 32)
+            .store_uint(actual_value, 64)
+           .end_cell();
 }
 
 ;; TODO: add dict support with whitelisted addresses of sc
-() sign_up(int query_id, slice client_owner_addr, cell oracle_client_code, int start_balance, slice sc_address, int comission_size, cell whitelisted_oracle_addresses) impure {
-    cell state_init = calculate_oracle_client_state_init(client_owner_addr, my_address(), sc_address, oracle_client_code, comission_size, whitelisted_oracle_addresses);
+() sign_up(int new_client_id, int query_id, slice client_owner_addr, cell oracle_client_code, int start_balance, slice sc_address, int comission_size, cell whitelisted_oracle_addresses, int actual_value) impure {
+    cell state_init = calculate_oracle_client_state_init(my_address(), new_client_id, oracle_client_code);
     slice to_wallet_address = calculate_oracle_client_address(state_init);
+    
+    int default_mode = mode::on_demand();
+    int interval = 0;
+
+    cell body = compose_create_account(actual_value, client_owner_addr, my_address(), sc_address, comission_size, whitelisted_oracle_addresses, default_mode, interval);
+ 
     var msg = begin_cell()
                 .store_uint(0x18, 6)
                 .store_slice(to_wallet_address)
                 .store_coins(start_balance)
                 .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
                 .store_ref(state_init)
-                .store_ref(compose_create_account(query_id));
+                .store_ref(body);
 
     ;; TODO: decide who pays for transfer fees
     send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
+}
+
+() save_data (slice admin_address, cell meta_data, cell oracle_client_code, int comission_size, cell whitelisted_oracle_addresses, int number_of_clients, int actual_value) impure {
+  builder data = begin_cell()
+                .store_slice(admin_address)
+                .store_ref(meta_data)
+                .store_ref(oracle_client_code)
+                .store_coins(comission_size)
+                .store_ref(whitelisted_oracle_addresses)
+                .store_uint(number_of_clients, 64)
+                .store_uint(actual_value, 64);
+  set_data(data.end_cell());
+  return();
+}
+
+() clients_update (cell oracle_client_code, int number_of_clients, int actual_value) {
+  int client_id = 0;
+  while (client_id < number_of_clients) {
+    cell state_init = calculate_oracle_client_state_init(my_address(), client_id, oracle_client_code);
+    slice to_wallet_address = calculate_oracle_client_address(state_init);
+    slice body = begin_cell().store_uint(op::new_value(), 32).store_uint(0, 64).store_uint(actual_value, 64).end_cell().begin_parse(); ;; TODO 64 bits is query_id but idk if its needed
+
+    var msg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(to_wallet_address)
+                .store_coins(0)
+                .store_uint(0, 107)
+                .store_slice(body);
+
+    ;; TODO: decide who pays for data update
+    send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
+    client_id += 1;
+  }
+  return ();
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -51,16 +98,21 @@ cell compose_create_account(int query_id) inline {
     if (flags & 1) {
         ;; TODO: Finish logic of on bounce
         ;; on_bounce(in_msg_body, msg_value);
+        ;; in theory "throw(0xffff)" will be enougth
         return ();
     }
 
-    (slice admin_address, cell meta_data, cell oracle_client_code, int comission_size, cell whitelisted_oracle_addresses) = load_data();
+    (slice admin_address, cell meta_data, cell oracle_client_code, int comission_size, cell whitelisted_oracle_addresses, int number_of_clients, int actual_value) = load_data();
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
     if (op == op::update()) {
-      throw_unless(103, )
+      var (_, is_sender_whitelisted?) = whitelisted_oracle_addresses.dict_get?(8 + 256, sender_address);
+      throw_unless(103,  is_sender_whitelisted?);
+      int new_actual_value = in_msg_body~load_uint(64);
+      save_data(admin_address, meta_data, oracle_client_code, comission_size, whitelisted_oracle_addresses, number_of_clients, new_actual_value);
+      clients_update(oracle_client_code, number_of_clients, actual_value); 
       return (); 
     }
  
@@ -68,7 +120,8 @@ cell compose_create_account(int query_id) inline {
         throw_unless(101, msg_value >= min_to_create_account);
         int start_balance = msg_value - min_to_create_account;
         slice sc_address = in_msg_body~load_msg_addr();
-        sign_up(query_id, sender_address, oracle_client_code, start_balance, sc_address, comission_size, whitelisted_oracle_addresses);
+        int new_client_id = number_of_clients + 1; 
+        sign_up(new_client_id, query_id, sender_address, oracle_client_code, start_balance, sc_address, comission_size, whitelisted_oracle_addresses, actual_value);
         return ();
     }
 
@@ -89,7 +142,7 @@ cell compose_create_account(int query_id) inline {
     throw(0xffff);
 }
 
-(slice, cell, cell, int, cell) get_oracle_data() method_id {
-    (slice admin_address, cell meta_data, cell oracle_client_code, int comission_size, cell whitelisted_oracle_addresses) = load_data();
-    return (admin_address, meta_data, oracle_client_code, comission_size, whitelisted_oracle_addresses);
+(slice, cell, cell, int, cell, int, int) get_oracle_data() method_id {
+    (slice admin_address, cell meta_data, cell oracle_client_code, int comission_size, cell whitelisted_oracle_addresses, int number_of_clients, int actual_value) = load_data();
+    return (admin_address, meta_data, oracle_client_code, comission_size, whitelisted_oracle_addresses, number_of_clients, actual_value);
 }

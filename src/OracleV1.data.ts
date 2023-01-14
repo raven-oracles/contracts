@@ -120,6 +120,8 @@ export function oracleMasterInitData(config: {
     };
     comission_size: BN;
     whitelisted_oracle_addresses: Address[];
+    number_of_clients: BN;
+    actual_value: BN;
 }): Cell {
     return beginCell()
         .storeAddress(config.admin_address)
@@ -127,6 +129,8 @@ export function oracleMasterInitData(config: {
         .storeRef(oracleClientSourceV1CodeCell)
         .storeCoins(config.comission_size)
         .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
+        .storeUint(config.number_of_clients, 64)
+        .storeUint(config.actual_value, 64)
         .endCell();
 }
 
@@ -154,23 +158,38 @@ export interface OracleMasterConfig {
     };
     comission_size: BN;
     whitelisted_oracle_addresses: Address[];
+    number_of_clients: BN,
+    actual_value: BN,
 }
 
-export interface OracleClientConfig {
-    actual_value: number;
+export interface OracleClientInitConfig {
+    balance?: BN;
+    oracle_master_address: Address;
+    client_id: BN;
+}
+
+export function oracleClientInitData(config: OracleClientInitConfig): Cell {
+    return beginCell()
+        .storeAddress(config.oracle_master_address)
+        .storeUint(config.client_id, 32)
+        .endCell();
+}
+
+export interface OracleClientUploadConfig {
+    actual_value: BN;
     owner_address: Address;
     oracle_master_address: Address;
     smartcontract_address: Address;
     comission_size: BN;
-    mode: number;
-    interval: number;
+    mode: BN;
+    interval: BN;
     whitelisted_oracle_addresses: Address[];
-    balance?: BN;
 }
 
-export function oracleClientInitData(config: OracleClientConfig): Cell {
+export function oracleClientUploadData(config: OracleClientUploadConfig): Cell {
     return beginCell()
-        .storeUint(config.actual_value, 64)
+        .storeUint(OPS.CreateAccount, 32)
+        .storeUint(0, 64)
         .storeRef(
             beginCell()
                 .storeAddress(config.owner_address)
@@ -182,6 +201,7 @@ export function oracleClientInitData(config: OracleClientConfig): Cell {
         .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
         .storeUint(config.mode, 32)
         .storeUint(config.interval, 32)
+        .storeUint(config.actual_value, 64)
         .endCell();
 }
 

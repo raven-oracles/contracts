@@ -4,12 +4,12 @@ import { oracleClientSourceV1 } from './OracleV1.source';
 import { compileFunc } from './utils/compileFunc';
 import { zeroAddress } from './utils/randomAddress';
 import BN from 'bn.js';
-import { OracleClientConfig, oracleClientInitData } from './OracleV1.data';
+import { OracleClientInitConfig, oracleClientInitData } from './OracleV1.data';
 
 export class OracleV1LocalClient {
     private constructor(public readonly contract: SmartContract, public readonly address: Address) {}
 
-    static async createFromConfig(config: OracleClientConfig) {
+    static async createFromConfig(config: OracleClientInitConfig) {
         const code = await compileFunc(oracleClientSourceV1());
 
         const data = oracleClientInitData(config);
