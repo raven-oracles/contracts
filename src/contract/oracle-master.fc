@@ -94,6 +94,7 @@ cell compose_create_account(int actual_value, slice owner_address, slice oracle_
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_uint(4);
     slice sender_address = cs~load_msg_addr();
+    var (wc, addr_hash) = parse_std_addr(sender_address);
 
     if (flags & 1) {
         ;; TODO: Finish logic of on bounce
@@ -108,7 +109,7 @@ cell compose_create_account(int actual_value, slice owner_address, slice oracle_
     int query_id = in_msg_body~load_uint(64);
 
     if (op == op::update()) {
-      var (_, is_sender_whitelisted?) = whitelisted_oracle_addresses.dict_get?(8 + 256, sender_address);
+      var (_, is_sender_whitelisted?) = whitelisted_oracle_addresses.udict_get?(256, addr_hash);
       throw_unless(103,  is_sender_whitelisted?);
       int new_actual_value = in_msg_body~load_uint(64);
       save_data(admin_address, meta_data, oracle_client_code, comission_size, whitelisted_oracle_addresses, number_of_clients, new_actual_value);

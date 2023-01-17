@@ -121,6 +121,46 @@ describe('Oracle v1 Master', () => {
         // TODO: How to test the init state of the deployed client contract?
     });
 
+    // TODO clients_update check
+    it('should update actual_value on master contract correctly', async () => {
+        const tonUsdPrice = new BN(2.44 * 100); // USD price in cents
+
+        const result = await masterContract.contract.sendInternalMessage(
+            internalMessage({
+                value: toNano(1),
+                from: config.whitelisted_oracle_addresses[0],
+                body: beginCell()
+                    .storeUint(OPS.Update, 32)
+                    .storeUint(0, 64)
+                    .storeUint(tonUsdPrice, 64)
+                    .endCell(),
+            }),
+        );
+        expect(result.exit_code).toEqual(0);
+        expect(result.type).toEqual('success');
+        // TODO: How do we test the value is right?
+        // TODO: Test that update was send to ALL client contracts
+    });
+
+    it('should fail updating actual_value on master contract with 103 error', async () => {
+        const tonUsdPrice = new BN(2.44 * 100); // USD price in cents
+        const senderAddress = randomAddress('UKNOWN_ORACLE_ADDRESS')
+
+        const result = await masterContract.contract.sendInternalMessage(
+            internalMessage({
+                value: toNano(1),
+                from: senderAddress,
+                body: beginCell()
+                    .storeUint(OPS.Update, 32)
+                    .storeUint(0, 64)
+                    .storeUint(tonUsdPrice, 64)
+                    .endCell(),
+            }),
+        );
+
+        expect(result.exit_code).toEqual(103);
+    });
+
     it('should successfully withdraw requested amount of TONs', async () => {
         masterContract.contract.setC7Config({
             balance: toNano(20),
@@ -170,7 +210,7 @@ describe('Oracle v1 Client', () => {
         );
     });
 
-    it('should update data on client contract correctly', async () => {
+    it('should store updated data on client contract correctly', async () => {
         const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
                 value: toNano(1),
@@ -188,22 +228,6 @@ describe('Oracle v1 Client', () => {
         const getMethodResult = await clientContract.contract.invokeGetMethod('get_actual_value', []);
         expect(getMethodResult.type).toEqual('success');
         // TODO: How do we test the value is right?
-    });
-
-    it('should fail updating data on client contract with 103 error', async () => {
-        const result = await clientContract.contract.sendInternalMessage(
-            internalMessage({
-                value: toNano(1),
-                from: randomAddress('UKNOWN_ORACLE_ADDRESS'),
-                body: beginCell()
-                    .storeUint(OPS.NewValue, 32)
-                    .storeUint(0, 64)
-                    .storeUint(tonUsdPrice, 64)
-                    .endCell(),
-            }),
-        );
-
-        expect(result.exit_code).toEqual(103);
     });
 
     it('should fail a fetch request with 101 error code - insufficient balance', async () => {
@@ -230,10 +254,10 @@ describe('Oracle v1 Client', () => {
             internalMessage({
                 value: toNano(1),
                 from: clientInitConfig.oracle_master_address,
-                body: oracleClientUploadData({...clientUploadConfig, smartcontract_address: randomAddress('NOT_ALLOWED_ADDRESS')}),
+                body: oracleClientUploadData({ ...clientUploadConfig, smartcontract_address: randomAddress('NOT_ALLOWED_ADDRESS') }),
             }),
         );
-        
+
         const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
                 from: senderAddress,
