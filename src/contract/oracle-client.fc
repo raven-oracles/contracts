@@ -3,23 +3,19 @@ _ load_data() inline {
   int actual_value = ds~load_uint(64);
 
   var addresses = ds~load_ref().begin_parse();
-  slice owner_address = addresses~load_msg_addr(); 
+  slice user_address = addresses~load_msg_addr(); 
   slice master_address = addresses~load_msg_addr();
-  slice sc_address = addresses~load_msg_addr();
 
   int comission_size = ds~load_coins();
-  cell whitelisted_oracle_addresses = ds~load_ref().begin_parse().preload_dict();
   int mode = ds~load_uint(32);
   int interval = ds~load_uint(32);
   int client_id = ds~load_uint(32);
 
   return (
     actual_value,
-    owner_address,
+    user_address,
     master_address,
-    sc_address,
     comission_size,
-    whitelisted_oracle_addresses,
     mode,
     interval,
     client_id 
@@ -37,12 +33,11 @@ _ load_init_data () inline {
   );
 }
 
-() save_data (int actual_value, slice owner_address, slice master_address, slice sc_address, int comission_size, cell whitelisted_oracle_addresses, int mode, int interval, int client_id) impure {
+() save_data (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) impure {
   cell data = begin_cell()
       .store_uint(actual_value, 64)
-      .store_ref(begin_cell().store_slice(owner_address).store_slice(master_address).store_slice(sc_address).end_cell())
+      .store_ref(begin_cell().store_slice(user_address).store_slice(master_address).end_cell())
       .store_coins(comission_size)
-      .store_ref(begin_cell().store_dict(whitelisted_oracle_addresses).end_cell())
       .store_uint(mode, 32)
       .store_uint(interval, 32)
       .store_uint(client_id, 32)
@@ -111,44 +106,53 @@ _ load_init_data () inline {
   
     throw_unless(103, sender_address.slice_hash() == master_address.slice_hash()); ;; permission denied
 
-    slice addresses = in_msg_body~load_ref().begin_parse();
-    slice owner_address = addresses~load_msg_addr();
-    slice master_address = addresses~load_msg_addr();
-    slice sc_address = addresses~load_msg_addr();
+    slice user_address = in_msg_body~load_msg_addr();
     int comission_size = in_msg_body~load_coins();
-    cell whitelisted_oracle_addresses = in_msg_body~load_ref();
     int mode = in_msg_body~load_uint(32);
     int interval = in_msg_body~load_uint(32);
     int actual_value = in_msg_body~load_uint(64);
     
-    save_data(actual_value, owner_address, master_address, sc_address, comission_size, whitelisted_oracle_addresses, mode, interval, client_id); 
+    save_data(actual_value, user_address, master_address, comission_size, mode, interval, client_id); 
 
     return();
   }
   
-  (int actual_value, slice owner_address, slice master_address, slice sc_address, int comission_size, cell whitelisted_oracle_addresses, int mode, int interval, int client_id) = load_data();
+  (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();
 
   if (op == op::new_value()) {
     throw_unless(103, sender_address.slice_hash() == master_address.slice_hash()); ;; permission denied
     int actual_value = in_msg_body~load_uint(64);
-    save_data(actual_value, owner_address, master_address, sc_address, comission_size, whitelisted_oracle_addresses, mode, interval, client_id); 
+    save_data(actual_value, user_address, master_address, comission_size, mode, interval, client_id); 
     return();
   }
 
   if (op == op::fetch()) {
-    throw_unless(103, sender_address.slice_hash() == sc_address.slice_hash()); ;; permission denied
+    throw_unless(103, sender_address.slice_hash() == user_address.slice_hash()); ;; permission denied
     throw_if(101, balance < comission_size); ;; insufficient funds
     
     ;; TODO: none of 2 transactions are getting sent, must be debugged
     compose_comission_payment(master_address, comission_size);
-    compose_update_message(query_id, actual_value, sc_address);
+    compose_update_message(query_id, actual_value, user_address);
     
     return();
   }
-
+  ;;TODO NORM WITHDrawal
+  ;;  if (op == op::withdrawal()) {
+  ;;    throw_unless(103, sender_address.slice_hash() == admin_address.slice_hash());
+  ;;      int withdrawal_amount = in_msg_body~load_coins();
+  ;;      throw_unless(101, withdrawal_amount <= my_balance - 1000000);
+  ;;      cell withdraw_msg = begin_cell()
+  ;;          .store_uint(0x18, 6)
+  ;;          .store_slice(admin_address)
+  ;;          .store_coins(withdrawal_amount)
+  ;;          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+  ;;          .end_cell();
+  ;;      send_raw_message(withdraw_msg, 64); ;; withdrawal entire balance
+  ;;      return();
+  ;;  }
   if (op == op::withdrawal()) {
-    throw_unless(103, sender_address.slice_hash() == sc_address.slice_hash()); ;; permission denied 
-    compose_withdrawal(sender_address); ;; TODO change withdrawal to 64 code maybe
+    throw_unless(103, sender_address.slice_hash() == user_address.slice_hash()); ;; permission denied 
+    compose_withdrawal( user_address); ;; TODO change withdrawal to 64 code maybe
     return();
   }
 
@@ -156,6 +160,6 @@ _ load_init_data () inline {
 }
 
 (int) get_actual_value() method_id {
-  (int actual_value, slice owner_address, slice master_address, slice sc_address, int comission_size, cell whitelisted_oracle_addresses, int mode, int interval, int client_id) = load_data();  
+  (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
   return (actual_value);
 }

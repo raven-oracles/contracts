@@ -19,13 +19,12 @@ const min_to_create_account = 20000000; ;; 0.02 TON
     );
 }
 
-cell compose_create_account(int actual_value, slice owner_address, slice oracle_master_address, slice sc_address, int comission_size, cell whitelisted_oracle_addresses, int mode, int interval) inline {
+cell compose_create_account(int actual_value, slice user_address, slice oracle_master_address, slice sc_address, int comission_size, cell whitelisted_oracle_addresses, int mode, int interval) inline {
   return begin_cell()
             .store_uint(op::create_account(), 32)
             .store_uint(0, 64)
-            .store_ref(begin_cell().store_slice(owner_address).store_slice(oracle_master_address).store_slice(sc_address).end_cell())
+            .store_slice(user_address)
             .store_coins(comission_size)
-            .store_ref(whitelisted_oracle_addresses)
             .store_uint(mode, 32)
             .store_uint(interval, 32)
             .store_uint(actual_value, 64)

@@ -1,7 +1,40 @@
+_ load_init_data () inline {
+  slice ds = get_data().begin_parse();
+  int actual_value = ds~load_uint(64);
+
+  return (
+    actual_value
+  );
+}
 
 ;; testable
 () recv_internal (slice in_msg_body) impure {
   int op = in_msg_body~load_uint(32);
   if (op == op::fetch()){
+    int query = in_msg_body~load_uint(64);
+    slice client_address = in_msg_body~load_msg_addr();
+    cell fetch_msg_body = begin_cell().store_uint(op::fetch(), 32).store_uint(0, 64).end_cell();
+    cell fetch_message = begin_cell()
+          .store_uint(0x18, 6)
+          .store_slice(client_address)
+          .store_coins(0)
+          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1)
+          .store_uint(1, 1)
+          .store_ref(fetch_msg_body)
+          .end_cell();
+    send_raw_message(fetch_message, 64); 
   }
+
+  if (op == op::update()){
+    (int actual_value) = load_init_data();
+    int query = in_msg_body~load_uint(64);
+    int new_value = in_msg_body~load_uint(64);
+    set_data(begin_cell().store_uint(new_value, 64).end_cell());
+  }
+
+}
+
+(int) get_actual_value() method_id {
+  ( int actual_value) = load_init_data();
+  return (actual_value);
 }

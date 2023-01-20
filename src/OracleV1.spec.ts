@@ -69,11 +69,9 @@ const clientInitConfig: OracleClientInitConfig = {
 
 const clientUploadConfig: OracleClientUploadConfig = {
     actual_value: new BN(0),
-    owner_address: randomAddress('owner_address'),
+    user_address: randomAddress('owner_address'),
     oracle_master_address: randomAddress('oracle_master_address'),
-    smartcontract_address: randomAddress('smartcontract_address'),
     comission_size: toNano(0.1),
-    whitelisted_oracle_addresses: [randomAddress('WHITELISTED_ORACLE_ADDRESS')],
     mode: new BN(MODES.OnDemand),
     interval: new BN(1),
 };
@@ -236,7 +234,7 @@ describe('Oracle v1 Client', () => {
 
         const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
-                from: clientUploadConfig.smartcontract_address,
+                from: clientUploadConfig.user_address,
                 body: beginCell()
                     .storeUint(OPS.Fetch, 32)
                     .storeUint(0, 64)
@@ -253,7 +251,7 @@ describe('Oracle v1 Client', () => {
             internalMessage({
                 value: toNano(1),
                 from: clientInitConfig.oracle_master_address,
-                body: oracleClientUploadData({ ...clientUploadConfig, smartcontract_address: randomAddress('NOT_ALLOWED_ADDRESS') }),
+                body: oracleClientUploadData({ ...clientUploadConfig, user_address: randomAddress('NOT_ALLOWED_ADDRESS') }),
             }),
         );
 
@@ -285,7 +283,7 @@ describe('Oracle v1 Client', () => {
 
         const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
-                from: clientUploadConfig.smartcontract_address,
+                from: clientUploadConfig.user_address,
                 body: beginCell()
                     .storeUint(OPS.Fetch, 32)
                     .storeUint(0, 64)

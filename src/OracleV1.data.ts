@@ -185,28 +185,19 @@ export function oracleUserInitData(config: OracleUserInitConfig): Cell {
 
 export interface OracleClientUploadConfig {
     actual_value: BN;
-    owner_address: Address;
+    user_address: Address;
     oracle_master_address: Address;
-    smartcontract_address: Address;
     comission_size: BN;
     mode: BN;
     interval: BN;
-    whitelisted_oracle_addresses: Address[];
 }
 
 export function oracleClientUploadData(config: OracleClientUploadConfig): Cell {
     return beginCell()
         .storeUint(OPS.CreateAccount, 32)
         .storeUint(0, 64)
-        .storeRef(
-            beginCell()
-                .storeAddress(config.owner_address)
-                .storeAddress(config.oracle_master_address)
-                .storeAddress(config.smartcontract_address)
-                .endCell(),
-        )
+        .storeAddress(config.user_address)
         .storeCoins(config.comission_size)
-        .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
         .storeUint(config.mode, 32)
         .storeUint(config.interval, 32)
         .storeUint(config.actual_value, 64)
