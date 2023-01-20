@@ -15,7 +15,7 @@ export const oracleMasterSourceV1 = () => {
   }
 
 const oracleMasterSourceV1CodeBoc =
-  'te6ccsECCgEAAZcAAA0AEgArADAANQBMAMUBQwFyAZcBFP8A9KQT9LzyyAsBAgFiAwIALaC149qJofSBqan0AagDoegKA6Z/pn5hAgLMBwQCAUgGBQApTIUAfPFhXME8wB+gLMyz/LP8ntVIAO1Tf4KECFAnACyFjPFssfySHIywUT9AAS9ADLAMkg+QBwdMjLAsoHy//J0IIQhmCp3HD4KBB5EGgFBBA5SqrIUAfPFlAFzxZQA88WyYIQLyBnwsjLH8zLP8zLH8sfyz/Jd4AYyMsFUATPFlj6AhLLaxLMzMlx+wCALz2QY4BJL4JwAOhpgf0gGAC42EkvgnB2omh9IGpqfQBqAOh6AoDpn+mfmARpj+mfwQhMEpq8KRhdRw8dLZwcKKPAgIR6BTfQmPlwM4Jpn5giGCobKQR4BS3wG8EIJ1GPd6kQXXGBCq+CmhpBCDaWnaKJ3XGBL4JCB/l4QJCABa+QEh+QG68uBnAfoAMAKCCA9CQKFSILvy4GVwgBjIywVYzxZY+gLLasmAQPsAAEYxNjknggkxLQC+8uBlB4IJMS0AoQP6QDAIpAheJEUTQUTwCbvYaRc='
+  'te6ccsECCwEAAaMAAA0AEgArADAANQBMAMkBSgFQAX4BowEU/wD0pBP0vPLICwECAWIDAgAtoLXj2omh9IGpqfQBqAOh6AoDpn+mfmECAswHBAIBSAYFAClMhQB88WFcwTzAH6AszLP8s/ye1UgA9VN/goQIUCcALIWM8Wyx/JIcjLARP0ABL0AMsAySD5AHB0yMsCygfL/8nQghCGYKnccPgoEHkQaAUEEDlKqshQB88WUAXPFlADzxbJcIIQLyBnwsjLH8s/zAH6AszLH8sfyz/Jd4AYyMsFUATPFlj6AhLLaxLMzMlx+wCAP32QY4BJL4JwAOhpgf0gGBB9IhiBONhJL4LwdqJofSBqan0AagDoegKA6Z/pn5gE6Y/pn8EITBKavCkYXUcPnK2cHBwoo0GD+gc30Jj5cDOBaZ+YLxCqCykpO/gFLfAbnMEIJ1GPd6kIXXGBHC+CGhpBCDaWnaKJXXGBL4JAoJCAAIhA/y8ABY+QEi+QG68uBn+gAwAoIID0JAoVIgu/LgZXCAGMjLBVjPFlj6AstqyYBA+wAARjA1OYIQZSWzxf4gMAeCCTEtAKEC+kAwA6QIEFcQRkUFBPAJbQdryQ=='
 
 export const oracleMasterSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleMasterSourceV1CodeBoc, 'base64'))[0];
 
@@ -33,6 +33,24 @@ export const oracleClientSourceV1 = () => {
   }
 
 const oracleClientSourceV1CodeBoc =
-  'te6ccsECBwEAAVEAAA0AEgA8AEEAbADrAVEBFP8A9KQT9LzyyAsBAgFiAwIAT6HZldqJoaZ/qAOh9IH0gfSAYAf0AagDoegKA6Y/pj+mPmAgziCsvhECAswFBABRsgeR6AGTkKARniygDZ4soAmeLZINkZZ+LZgD9AQnmCWWP5Y/lj+T2qkB99thEQY4BIrfB8E7eRGAFoaYGY/SAYAOmP6Z+YwQgXkDPhKRBdRxiYmXaiaH0gaY+YAXyAgPyA3XlwM4DqAOh9IH0gfSAYAemf6mmP6Y/pn5gECDOIK3gE8HaiaGmf6gDofSB9IH0gGAH9AGoA6HoCgOmP6Y/pj5gIM4grQGAMg4ghDl4RvpUqC6jhk5Ogj5ASP5Abry4GcF0z8wCBA3QGYFBPAJ4F8DbEKCEILpY0NSMLqOEzJRMbkx8tBl+QEh+QFsErry4GfgMDOCEG0tO0W6myD5ATEB+QG68uBn4FuED/LwaCl7qg=='
+  'te6ccsECCAEAAVoAAA0AEgA8AEEAbADNAU4BWgEU/wD0pBP0vPLICwECAWIDAgBPodmV2omhpn+oA6H0gfSB9IBgB/QBqAOh6AoDpj+mP6Y+YCDOIKy+EQICzAUEAFGyB5HoAZOQoBGeLKANniygCZ4tkg2Rln4tmAP0BCeYJZY/lj+WP5PaqQG722ERBjgEit8ADoaYGAuNhIrfB8E7eRGAD9IBgBaY/pn5jBCBeQM+EpEF1HGDYQ9qJofSBpj5gB/ICA/IDdeXAz6gDofSB9IH0gGAH9AGppj+mP6Z+YBAgziCt4BPBAYB/O1E0NM/1AHQ+kD6QPpAMAP6ANQB0PQFAdMf0x/THzAQZxBWOIIQ5eEb6VKguo4aOTkJ+QEj+QG68uBnBdM/MAgQN0YTQAUE8AngXwNsQoIQguljQ1Iwuo4UMgP5ASP5ATRQA7ry4GchuTHy0GXgMDKCEG0tO0W64wJbhA/y8AcAFCH5ATL5Abry4GftKqTw'
 
 export const oracleClientSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleClientSourceV1CodeBoc, 'base64'))[0]
+
+export const oracleUserSourceV1 = () => {
+    return combineFunc(__dirname, [
+        './contract/imports/stdlib.fc',
+        './contract/imports/params.fc',
+        './contract/imports/constants.fc',
+        './contract/imports/op-codes.fc',
+        './contract/imports/modes.fc',
+        './contract/imports/utils.fc',
+        './contract/imports/discovery-params.fc',
+        './contract/oracle-user.fc',
+    ])
+}
+
+const oracleUserSourceV1CodeBoc =
+  'te6ccsEBAgEAGwANGwEU/wD0pBP0vPLICwEAGNPTHzCCEILpY0O6MPTJ56U='
+
+export const oracleUserSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleUserSourceV1CodeBoc, 'base64'))[0]

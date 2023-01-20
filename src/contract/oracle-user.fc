@@ -1,0 +1,7 @@
+
+;; testable
+() recv_internal (slice in_msg_body) impure {
+  int op = in_msg_body~load_uint(32);
+  if (op == op::fetch()){
+  }
+}

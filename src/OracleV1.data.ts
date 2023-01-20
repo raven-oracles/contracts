@@ -175,6 +175,14 @@ export function oracleClientInitData(config: OracleClientInitConfig): Cell {
         .endCell();
 }
 
+export interface OracleUserInitConfig {
+}
+
+export function oracleUserInitData(config: OracleUserInitConfig): Cell {
+    return beginCell()
+        .endCell();
+}
+
 export interface OracleClientUploadConfig {
     actual_value: BN;
     owner_address: Address;

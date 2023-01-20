@@ -16,7 +16,7 @@ cell pack_oracle_client_data(slice master_address, int client_id) inline {
 
 cell calculate_oracle_client_state_init(slice master_address, int client_id, cell oracle_client_code) inline {
   return begin_cell()
-    .store_uint(0, 6)
+    .store_uint(0, 2)
     .store_dict(oracle_client_code)
     .store_dict(pack_oracle_client_data(master_address, client_id))
     .store_uint(0, 1)

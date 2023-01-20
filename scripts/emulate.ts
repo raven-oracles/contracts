@@ -5,6 +5,8 @@ import {
   StateInit,
   contractAddress,
   Cell,
+  beginCell,
+  CellMessage,
   toNano,
   WalletV3R2Source,
   WalletContract,
@@ -14,8 +16,10 @@ import {
 import { mnemonicNew, mnemonicToPrivateKey } from "ton-crypto";
 import { randomAddress } from '../src/utils/randomAddress';
 import { loadAddressesDict, MODES, OPS, OracleClientInitConfig, OracleClientUploadConfig, oracleClientUploadData, OracleMasterConfig } from '../src/OracleV1.data';
-import { oracleMasterInitData } from '../src/OracleV1.data';
-import { oracleMasterSourceV1CodeCell } from '../src/OracleV1.source';
+import { oracleMasterInitData, oracleUserInitData, oracleClientInitData } from '../src/OracleV1.data';
+import { oracleMasterSourceV1CodeCell, oracleClientSourceV1CodeCell, oracleUserSourceV1CodeCell } from '../src/OracleV1.source';
+import { OracleV1LocalClient } from '../src/OracleV1LocalClient';
+import { OracleV1LocalUser } from '../src/OracleV1LocalUser';
 
 import qrcode from "qrcode-terminal";
 
@@ -37,7 +41,7 @@ const config: OracleMasterConfig = {
   comission_size: toNano(0.1),
   whitelisted_oracle_addresses: [randomAddress('WHITELISTED_ORACLE_ADDRESS')],
   number_of_clients: new BN(0),
-  actual_value: new BN(0),
+  actual_value: toNano(0),
 };
 
 const clientInitConfig: OracleClientInitConfig = {
@@ -83,6 +87,30 @@ const emulateExecution = async () => {
     apiKey
   });
 
+  // const mnemonicOracle = await mnemonicNew();
+  const mnemonicOracle = [
+    'sister', 'upgrade', 'eager',
+    'certain', 'ahead', 'eight',
+    'patch', 'rose', 'blue',
+    'celery', 'process', 'human',
+    'urban', 'peasant', 'crunch',
+    'post', 'fantasy', 'voice',
+    'razor', 'adjust', 'staff',
+    'pyramid', 'aspect', 'erode'
+  ]
+  const keyPairOracle = await mnemonicToPrivateKey(mnemonicOracle);
+  const walletOracle = WalletContract.create(
+    client,
+    WalletV3R2Source.create({ publicKey: keyPairOracle.publicKey, workchain: 0 })
+  );
+  const addressOracle = walletOracle.address.toFriendly();
+  config.whitelisted_oracle_addresses = [walletOracle.address]
+  clientInitConfig.oracle_master_address = walletOracle.address
+  clientUploadConfig.oracle_master_address = walletOracle.address
+  clientUploadConfig.whitelisted_oracle_addresses = [walletOracle.address]
+  console.log('oracle:')
+  console.log(addressOracle) // Get contract address
+
   // const mnemonicOwner = await mnemonicNew();
   const mnemonicOwner =
     [
@@ -104,32 +132,41 @@ const emulateExecution = async () => {
   const addressOwner = walletOwner.address.toFriendly();
   config.admin_address = walletOwner.address
 
-
-  const mnemonicClient = await mnemonicNew();
+  // const mnemonicClient = await mnemonicNew();
+  // console.log(mnemonicClient)
+  const mnemonicClient =
+    [
+      'target', 'staff', 'exact',
+      'jacket', 'obscure', 'assist',
+      'note', 'cat', 'earth',
+      'find', 'pull', 'subject',
+      'guilt', 'furnace', 'fall',
+      'magic', 'minimum', 'stamp',
+      'add', 'keen', 'dwarf',
+      'season', 'mom', 'fetch'
+    ]
   const keyPairClient = await mnemonicToPrivateKey(mnemonicClient);
   const walletClient = WalletContract.create(
     client,
     WalletV3R2Source.create({ publicKey: keyPairClient.publicKey, workchain: 0 })
   );
   const addressClient = walletClient.address.toFriendly();
-
   console.log('owner:')
   console.log(addressOwner) // Get contract address
 
   const linkForOwner = `ton://transfer/${addressOwner}?amount=50000000`
-  qrcode.generate(linkForOwner, { small: true });
+  // qrcode.generate(linkForOwner, { small: true });
 
   console.log('client:')
   console.log(addressClient) // Get contract address
 
   const linkForClient = `ton://transfer/${addressClient}?amount=50000000`
-  qrcode.generate(linkForClient, { small: true });
+  // qrcode.generate(linkForClient, { small: true });
 
   // const depositer1 = await depositWaiter(client, walletOwner.address);
   // const depositer2 = await depositWaiter(client, walletClient.address);
   // console.log(depositer1)
   // console.log(depositer2)
-
   const masteerContractCode = oracleMasterSourceV1CodeCell
   const masterContractInitDataCell = oracleMasterInitData(config);
 
@@ -144,6 +181,7 @@ const emulateExecution = async () => {
     initialCode: masteerContractCode,
     initialData: masterContractInitDataCell,
   });
+  clientUploadConfig.smartcontract_address = masterContractAddress
 
   console.log(masterContractAddress)
 
@@ -167,29 +205,72 @@ const emulateExecution = async () => {
     })
   });
 
-  await client.sendExternalMessage(walletOwner, masteerContractDeployTrx);
 
+  const tonUsdPrice = toNano(2.44 * 100); // USD price in cents
+  const newUpdateValueBody = beginCell()
+    .storeUint(OPS.Update, 32) // opcode
+    .storeUint(0, 64) // queryid
+    .storeUint(tonUsdPrice, 64)
+    .endCell()
+
+  let seqnoOracle: number = await walletOracle.getSeqNo();
+  const oracleTransaction = walletClient.createTransfer({
+    secretKey: keyPairOracle.secretKey,
+    seqno: seqnoOracle,
+    sendMode: 3,
+    order: new InternalMessage({
+      to: masterContractAddress,
+      value: toNano(0),
+      bounce: false,
+      body: new CommonMessageInfo({
+        body: new CellMessage(newUpdateValueBody),
+      })
+    })
+  })
+
+
+  const userContractCode = oracleUserSourceV1CodeCell
+  const userContractInitDataCell = oracleUserInitData({});
+
+  const userInitCell = new Cell();
+  new StateInit({
+    code: userContractCode,
+    data: userContractInitDataCell,
+  }).writeTo(userInitCell);
+
+  const userContractAddress = contractAddress({
+    workchain: 0,
+    initialCode: userContractCode,
+    initialData: userContractInitDataCell,
+  });
+  // clientUploadConfig.smartcontract_address = masterContractAddress
+
+  console.log(userContractAddress)
+  // todo price updater
+  // OracleV1LocalMaster.createSignupPayload(sc_address)
   //todo signup
-  // const newBody = beginCell()
-  //   .storeUint(0x6d2d3b45, 32)
-  //   .storeUint(0, 64)
-  //   .storeCoins(toNano(0.04))
-  //   .endCell()
+  const newClientBody = beginCell()
+    .storeUint(OPS.Signup, 32) // opcode
+    .storeUint(0, 64) // queryid
+    .storeAddress(userContractAddress)
+    .endCell()
   //
-  // let seqno1: number = await walletOwner.getSeqNo();
-  // const trx1 = walletOwner.createTransfer({
-  //   secretKey: keyPairOwner.secretKey,
-  //   seqno: seqno1,
-  //   sendMode: 64,
-  //   order: new InternalMessage({
-  //     to: addressa,
-  //     value: toNano(0.03),
-  //     bounce: false,
-  //     body: new CommonMessageInfo({
-  //       body: new CellMessage(newBody),
-  //     })
-  //   })
-  // });
-  // await client.sendExternalMessage(walletOwner, trx1)
+  let seqnoClient: number = await walletClient.getSeqNo();
+  const clientTransaction = walletClient.createTransfer({
+    secretKey: keyPairClient.secretKey,
+    seqno: seqnoClient,
+    sendMode: 3,
+    order: new InternalMessage({
+      to: masterContractAddress,
+      value: toNano(0.1),
+      bounce: false,
+      body: new CommonMessageInfo({
+        body: new CellMessage(newClientBody),
+      })
+    })
+  })
+  // await client.sendExternalMessage(walletOwner, masteerContractDeployTrx);
+  // await client.sendExternalMessage(walletOracle, oracleTransaction)
+  await client.sendExternalMessage(walletClient, clientTransaction)
 }
 emulateExecution() 

@@ -89,7 +89,6 @@ describe('Oracle v1 Master', () => {
         const call = await masterContract.contract.invokeGetMethod('get_oracle_data', []);
         const { metadata, admin_address, comission_size, client_init_code, whitelisted_oracle_addresses, number_of_clients, actual_value } =
             parseOracleDetails(call);
-
         expect(admin_address).toBeDefined();
         assertAddress(admin_address, config.admin_address);
         expect(metadata.name).toEqual('USDT/TON Price Oracle');
