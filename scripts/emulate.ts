@@ -238,10 +238,10 @@ const emulateExecution = async () => {
   });
 
   // -------------- user DEPLOY 
-  let seqnoUserDeploy: number = await walletOwner.getSeqNo();
+  let seqnoUserDeploy: number = await walletClient.getSeqNo();
 
-  const userContractDeployTrx = walletOwner.createTransfer({
-    secretKey: keyPairOwner.secretKey,
+  const userContractDeployTrx = walletClient.createTransfer({
+    secretKey: keyPairClient.secretKey,
     seqno: seqnoUserDeploy,
     sendMode: SendMode.PAY_GAS_SEPARATLY + SendMode.IGNORE_ERRORS,
     order: new InternalMessage({
@@ -313,7 +313,12 @@ const emulateExecution = async () => {
   // await client.sendExternalMessage(walletOwner, masterContractDeployTrx); // deploy master
   // await client.sendExternalMessage(walletOracle, oracleTransaction) // update master actual value
   // await client.sendExternalMessage(walletClient, clientTransaction) // signup (deploy client contract) 
-  // await client.sendExternalMessage(walletOracle, userContractDeployTrx) // deploy user contract
-  // await client.sendExternalMessage(walletOracle, userContractFetchTrx) // fetch actual value from client contract
+  // await client.sendExternalMessage(walletClient, userContractDeployTrx) // deploy user contract
+  // await client.sendExternalMessage(walletClient, userContractFetchTrx) // fetch actual value from client contract
+  //
+  //TODO:
+  //setIntrarval for ton price update every 30sec
+  //setIntrarval for user fetch every 15sec
+  //when money will be gone from client sc then withdrawal all from master contract back to depositer
 }
 emulateExecution() 
