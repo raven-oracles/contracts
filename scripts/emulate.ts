@@ -349,10 +349,10 @@ const emulateExecution = async () => {
   const ownerWithdrawalBalance = walletOwner.createTransfer({
     secretKey: keyPairOwner.secretKey,
     seqno: seqnoOwnerWithdrawal,
-    sendMode: SendMode.PAY_GAS_SEPARATLY + SendMode.IGNORE_ERRORS,
+    sendMode: 64,
     order: new InternalMessage({
       to: Address.parseFriendly(depositer1).address,
-      value: new BN(ownerWalletBalance.toNumber() - 1000000),
+      value: new BN(ownerWalletBalance.toNumber() - 100000000),
       bounce: false,
       body: new CommonMessageInfo({
       })
