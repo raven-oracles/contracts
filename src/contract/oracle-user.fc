@@ -8,19 +8,32 @@ _ load_init_data () inline {
 }
 
 ;; testable
-() recv_internal (slice in_msg_body) impure {
+() recv_internal (int my_balance, int msg_value, cell in_msg, slice in_msg_body) impure {
+  if (in_msg_body.slice_empty?()) { ;; ignore empty messages
+      return ();
+  }
+
+  slice cs = in_msg.begin_parse();
+  int flags = cs~load_uint(4);
+  
+  if (flags & 1) {
+      ;; TODO: Finish logic of on bounce
+      ;; on_bounce(in_msg_body, msg_value);
+      ;; in theory "throw(0xffff)" will be enougth
+      return ();
+  }
+
   int op = in_msg_body~load_uint(32);
   if (op == op::fetch()){
     int query = in_msg_body~load_uint(64);
     slice client_address = in_msg_body~load_msg_addr();
-    cell fetch_msg_body = begin_cell().store_uint(op::fetch(), 32).store_uint(0, 64).end_cell();
+    slice fetch_msg_body = begin_cell().store_uint(op::fetch(), 32).store_uint(0, 64).end_cell().begin_parse();
     cell fetch_message = begin_cell()
           .store_uint(0x18, 6)
           .store_slice(client_address)
-          .store_coins(0)
-          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1)
-          .store_uint(1, 1)
-          .store_ref(fetch_msg_body)
+          .store_coins(msg_value)
+          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+          .store_slice(fetch_msg_body)
           .end_cell();
     send_raw_message(fetch_message, 64); 
   }
@@ -35,6 +48,6 @@ _ load_init_data () inline {
 }
 
 (int) get_actual_value() method_id {
-  ( int actual_value) = load_init_data();
+  (int actual_value) = load_init_data();
   return (actual_value);
 }

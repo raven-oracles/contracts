@@ -33,7 +33,7 @@ _ load_init_data () inline {
   );
 }
 
-() save_data (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) impure {
+() save_data (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) impure inline {
   cell data = begin_cell()
       .store_uint(actual_value, 64)
       .store_ref(begin_cell().store_slice(user_address).store_slice(master_address).end_cell())
@@ -46,7 +46,7 @@ _ load_init_data () inline {
   return();
 }
 
-() compose_comission_payment (slice comission_address, int comission_size) {
+() compose_comission_payment (slice comission_address, int comission_size) impure {
   cell comission_message = begin_cell()
       .store_uint(0x18, 6)
       .store_slice(comission_address)
@@ -56,20 +56,19 @@ _ load_init_data () inline {
   send_raw_message(comission_message, 64); ;; pay fees
 }
 
-() compose_update_message ( int query_id, int actual_value, slice sc_address) {
-  cell update_msg_body = begin_cell().store_uint(op::update(), 32).store_uint(query_id, 64).store_uint(actual_value, 64).end_cell();
+() compose_update_message ( int query_id, int actual_value, slice sc_address) impure {
+  slice update_msg_body = begin_cell().store_uint(op::update(), 32).store_uint(query_id, 64).store_uint(actual_value, 64).end_cell().begin_parse();
   cell update_message = begin_cell()
         .store_uint(0x18, 6)
         .store_slice(sc_address)
-        .store_coins(0)
-        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1)
-        .store_uint(1, 1)
-        .store_ref(update_msg_body)
+        .store_coins(50000000)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .store_slice(update_msg_body)
         .end_cell();
   send_raw_message(update_message, 64); 
 }
 
-() compose_withdrawal (slice sender_address) {
+() compose_withdrawal (slice sender_address) impure {
   cell mssage = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(sender_address)
@@ -121,8 +120,8 @@ _ load_init_data () inline {
 
   if (op == op::new_value()) {
     throw_unless(103, sender_address.slice_hash() == master_address.slice_hash()); ;; permission denied
-    int actual_value = in_msg_body~load_uint(64);
-    save_data(actual_value, user_address, master_address, comission_size, mode, interval, client_id); 
+    int new_actual_value = in_msg_body~load_uint(64);
+    save_data(new_actual_value, user_address, master_address, comission_size, mode, interval, client_id); 
     return();
   }
 
@@ -131,8 +130,8 @@ _ load_init_data () inline {
     throw_if(101, balance < comission_size); ;; insufficient funds
     
     ;; TODO: none of 2 transactions are getting sent, must be debugged
-    compose_comission_payment(master_address, comission_size);
     compose_update_message(query_id, actual_value, user_address);
+    compose_comission_payment(master_address, comission_size);
     
     return();
   }
@@ -159,7 +158,17 @@ _ load_init_data () inline {
   throw(0xffff);
 }
 
+(int, slice, slice, int, int, int, int ) get_client_data() method_id {
+  (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
+  return (actual_value, user_address, master_address, comission_size, mode, interval, client_id);
+}
+
 (int) get_actual_value() method_id {
   (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
   return (actual_value);
+}
+
+(int) get_client_id() method_id {
+  (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
+  return (client_id);
 }
