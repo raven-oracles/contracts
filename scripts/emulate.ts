@@ -2,35 +2,18 @@ import BN from 'bn.js'
 import {
   Address,
   TonClient,
-  StateInit,
   contractAddress,
-  Cell,
   beginCell,
-  CellMessage,
   toNano,
-  WalletV3R2Source,
-  WalletContract,
   InternalMessage,
   CommonMessageInfo,
 } from 'ton';
-import { mnemonicNew, mnemonicToPrivateKey } from "ton-crypto";
 import { randomAddress } from '../src/utils/randomAddress';
-import { loadAddressesDict, MODES, OPS, OracleClientInitConfig, OracleClientUploadConfig, oracleClientUploadData, OracleMasterConfig } from '../src/OracleV1.data';
+import { OPS, OracleClientInitConfig, OracleMasterConfig } from '../src/OracleV1.data';
 import { oracleMasterInitData, oracleUserInitData, oracleClientInitData } from '../src/OracleV1.data';
 import { oracleMasterSourceV1CodeCell, oracleClientSourceV1CodeCell, oracleUserSourceV1CodeCell } from '../src/OracleV1.source';
-import { OracleV1LocalClient } from '../src/OracleV1LocalClient';
-import { OracleV1LocalUser } from '../src/OracleV1LocalUser';
-
+import { depositWaiter, deploySmartContract, createTransaction, generateWallet } from './helpers';
 import qrcode from "qrcode-terminal";
-const depositer1 = 'kQAf9V4MmFbGU_BMKTxJuM4pFSM5E7B70ECi_Od0hnHMGQps'
-
-enum SendMode {
-  CARRRY_ALL_REMAINING_BALANCE = 128,
-  CARRRY_ALL_REMAINING_INCOMING_VALUE = 64,
-  DESTROY_ACCOUNT_IF_ZERO = 32,
-  PAY_GAS_SEPARATLY = 1,
-  IGNORE_ERRORS = 2,
-}
 
 const config: OracleMasterConfig = {
   admin_address: randomAddress(''),
@@ -49,23 +32,6 @@ const clientInitConfig: OracleClientInitConfig = {
   oracle_master_address: randomAddress(''),
   client_id: new BN(1),
 };
-
-// todo generate wallets
-// todo deposit waiter
-// todo masterContract deploy from ownerWallet + update data function
-// todo signup from clientWallet
-// todo deploy clientContract and userContract 
-// todo withdraw entire balance when money on userContract is gone 
-
-const depositWaiter = async (client: TonClient, address: Address) => new Promise((res, _) => {
-  let i = setInterval(async () => {
-    const transactions = await client.getTransactions(address, { limit: 1 });
-    if (transactions.length > 0) {
-      clearInterval(i);
-      res(transactions[0].inMessage?.source)
-    }
-  }, 1000)
-})
 
 const emulateExecution = async () => {
   const endpoint = 'https://testnet.toncenter.com/api/v2/jsonRPC'
@@ -87,15 +53,8 @@ const emulateExecution = async () => {
     'razor', 'adjust', 'staff',
     'pyramid', 'aspect', 'erode'
   ]
-  const keyPairOracle = await mnemonicToPrivateKey(mnemonicOracle);
-  const walletOracle = WalletContract.create(
-    client,
-    WalletV3R2Source.create({ publicKey: keyPairOracle.publicKey, workchain: 0 })
-  );
-  const addressOracle = walletOracle.address.toFriendly();
+  const { keyPairOracle, walletOracle, addressOracle } = await generateWallet('oracle', client, mnemonicOracle);
   config.whitelisted_oracle_addresses = [walletOracle.address]
-  console.log('oracle wallet:')
-  console.log(addressOracle) // Get contract address
 
   // const mnemonicOwner = await mnemonicNew();
   const mnemonicOwner =
@@ -109,17 +68,10 @@ const emulateExecution = async () => {
       'early', 'exile', 'alone',
       'cradle', 'ordinary', 'road'
     ]
-
-  const keyPairOwner = await mnemonicToPrivateKey(mnemonicOwner);
-  const walletOwner = WalletContract.create(
-    client,
-    WalletV3R2Source.create({ publicKey: keyPairOwner.publicKey, workchain: 0 })
-  );
-  const addressOwner = walletOwner.address.toFriendly();
+  const { keyPairOwner, walletOwner, addressOwner } = await generateWallet('owner', client, mnemonicOwner);
   config.admin_address = walletOwner.address
 
   // const mnemonicClient = await mnemonicNew();
-  // console.log(mnemonicClient)
   const mnemonicClient =
     [
       'target', 'staff', 'exact',
@@ -131,222 +83,95 @@ const emulateExecution = async () => {
       'add', 'keen', 'dwarf',
       'season', 'mom', 'fetch'
     ]
-  const keyPairClient = await mnemonicToPrivateKey(mnemonicClient);
-  const walletClient = WalletContract.create(
-    client,
-    WalletV3R2Source.create({ publicKey: keyPairClient.publicKey, workchain: 0 })
-  );
-  const addressClient = walletClient.address.toFriendly();
-  console.log('owner wallet:')
-  console.log(addressOwner) // Get contract address
+  const { keyPairClient, walletClient, addressClient } = await generateWallet('client', client, mnemonicClient);
 
-  const linkForOwner = `ton://transfer/${addressOwner}?amount=50000000`
+  // -------------- WALLETS ACTIVATION
+  // const linkForOwner = `ton://transfer/${addressOwner}?amount=50000000`
   // qrcode.generate(linkForOwner, { small: true });
-
-  console.log('client wallet:')
-  console.log(addressClient) // Get contract address
-
-  const linkForClient = `ton://transfer/${addressClient}?amount=50000000`
+  // const linkForClient = `ton://transfer/${addressClient}?amount=50000000`
   // qrcode.generate(linkForClient, { small: true });
-
   // const depositer1 = await depositWaiter(client, walletOwner.address);
+  const depositer1 = 'kQAf9V4MmFbGU_BMKTxJuM4pFSM5E7B70ECi_Od0hnHMGQps'
   // const depositer2 = await depositWaiter(client, walletClient.address);
   // console.log(depositer1)
   // console.log(depositer2)
+  // -------------- WALLETS ACTIVATION
+
+  // -------------- MASTER SC DEPLOY
   const masterContractCode = oracleMasterSourceV1CodeCell
   const masterContractInitDataCell = oracleMasterInitData(config);
-
-  const initCell = new Cell();
-  new StateInit({
-    code: masterContractCode,
-    data: masterContractInitDataCell,
-  }).writeTo(initCell);
-
   const masterContractAddress = contractAddress({
     workchain: 0,
     initialCode: masterContractCode,
     initialData: masterContractInitDataCell,
   });
+  console.log(`master contract address: ${masterContractAddress}`)
   clientInitConfig.oracle_master_address = masterContractAddress
-
-
-  // -------------- Master deploy
-  let seqno: number = await walletOwner.getSeqNo();
-
-  const masterContractDeployTrx = walletOwner.createTransfer({
-    secretKey: keyPairOwner.secretKey,
-    seqno: seqno,
-    sendMode: SendMode.PAY_GAS_SEPARATLY + SendMode.IGNORE_ERRORS,
-    order: new InternalMessage({
-      to: masterContractAddress,
-      value: toNano(0.05),
-      bounce: false,
-      body: new CommonMessageInfo({
-        stateInit: new StateInit({
-          code: masterContractCode,
-          data: masterContractInitDataCell,
-        }),
-        body: null,
-      })
-    })
-  });
-  // --------------
+  const masterContractDeployTrx = await deploySmartContract(walletOwner, keyPairOwner, masterContractAddress, masterContractCode, masterContractInitDataCell);
+  // -------------- MASTER SC DEPLOY
 
   // -------------- MASTER UPDATE BY ORACLE 
   const tonUsdPrice = new BN(2.44 * 100); // USD price in cents
-  const newUpdateValueBody = beginCell()
+  const updateBody = beginCell()
     .storeUint(OPS.Update, 32) // opcode
     .storeUint(0, 64) // queryid
     .storeUint(tonUsdPrice, 64)
     .endCell()
+  const updateOnMasterByOracleTrx = await createTransaction(walletOracle, keyPairOracle, masterContractAddress, updateBody);
+  // -------------- MASTER UPDATE BY ORACLE 
 
-  let seqnoOracle: number = await walletOracle.getSeqNo();
-  const oracleTransaction = walletClient.createTransfer({
-    secretKey: keyPairOracle.secretKey,
-    seqno: seqnoOracle,
-    sendMode: 64,
-    order: new InternalMessage({
-      to: masterContractAddress,
-      value: toNano(0.05), // TODO WORK HERE
-      bounce: false,
-      body: new CommonMessageInfo({
-        body: new CellMessage(newUpdateValueBody),
-      })
-    })
-  })
-  // --------------
-
-  const clientContractCode = oracleClientSourceV1CodeCell
-  const clientContractInitDataCell = oracleClientInitData(clientInitConfig);
-
-  const clientContractAddress = contractAddress({
-    workchain: 0,
-    initialCode: clientContractCode,
-    initialData: clientContractInitDataCell,
-  });
-  console.log('master contract address:')
-  console.log(masterContractAddress)
-
-  console.log('client contract address:')
-  console.log(clientContractAddress)
+  // -------------- USER SC DEPLOY
   const userContractCode = oracleUserSourceV1CodeCell
   const userContractInitDataCell = oracleUserInitData({});
-
   const userContractAddress = contractAddress({
     workchain: 0,
     initialCode: userContractCode,
     initialData: userContractInitDataCell,
   });
+  console.log(`user contract address: ${userContractAddress}`)
+  const userContractDeployTrx = await deploySmartContract(walletClient, keyPairClient, userContractAddress, userContractCode, userContractInitDataCell);
 
-  // -------------- user DEPLOY 
-  let seqnoUserDeploy: number = await walletClient.getSeqNo();
-
-  const userContractDeployTrx = walletClient.createTransfer({
-    secretKey: keyPairClient.secretKey,
-    seqno: seqnoUserDeploy,
-    sendMode: SendMode.PAY_GAS_SEPARATLY + SendMode.IGNORE_ERRORS,
-    order: new InternalMessage({
-      to: userContractAddress,
-      value: toNano(0.05),
-      bounce: false,
-      body: new CommonMessageInfo({
-        stateInit: new StateInit({
-          code: userContractCode,
-          data: userContractInitDataCell,
-        }),
-        body: null,
-      })
-    })
-  });
-  // --------------
-
-  // -------------- signup 
-  console.log('user contract addres:')
-  console.log(userContractAddress)
-  // todo price updater
-  // OracleV1LocalMaster.createSignupPayload(sc_address)
-  //todo signup
-  const newClientBody = beginCell()
+  // -------------- SIGNUP CALL 
+  const signupBody = beginCell()
     .storeUint(OPS.Signup, 32) // opcode
     .storeUint(0, 64) // queryid
     .storeAddress(userContractAddress)
     .endCell()
-  //
-  let seqnoClient: number = await walletClient.getSeqNo();
-  const clientTransaction = walletClient.createTransfer({
-    secretKey: keyPairClient.secretKey,
-    seqno: seqnoClient,
-    sendMode: 3,
-    order: new InternalMessage({
-      to: masterContractAddress,
-      value: toNano(0.1),
-      bounce: false,
-      body: new CommonMessageInfo({
-        body: new CellMessage(newClientBody),
-      })
-    })
-  })
-  // --------------
+  const signupOnMasterByClientTrx = await createTransaction(walletClient, keyPairClient, masterContractAddress, signupBody);
+  // -------------- SIGNUP CALL 
 
-  //  ---------------- user fetch
-  const newClientUserFetchBody = beginCell()
+  // -------------- FETCH DATA FROM CLIENT SC CALL 
+  const clientContractCode = oracleClientSourceV1CodeCell
+  const clientContractInitDataCell = oracleClientInitData(clientInitConfig);
+  const clientContractAddress = contractAddress({
+    workchain: 0,
+    initialCode: clientContractCode,
+    initialData: clientContractInitDataCell,
+  });
+  console.log(`client contract address: ${clientContractAddress}`)
+  const fetchBody = beginCell()
     .storeUint(OPS.Fetch, 32) // opcode
     .storeUint(0, 64) // queryid
     .storeAddress(clientContractAddress)
     .endCell()
+  const fetchOnClientByUserTrx = await createTransaction(walletClient, keyPairClient, userContractAddress, fetchBody);
+  // -------------- FETCH DATA FROM CLIENT SC CALL 
 
-  let seqnoClientUserFetch: number = await walletClient.getSeqNo();
-  const userContractFetchTrx = walletClient.createTransfer({
-    secretKey: keyPairClient.secretKey,
-    seqno: seqnoClient,
-    sendMode: 64,
-    order: new InternalMessage({
-      to: userContractAddress,
-      value: toNano(0.1),
-      bounce: false,
-      body: new CommonMessageInfo({
-        body: new CellMessage(newClientUserFetchBody),
-      })
-    })
-  })
-  // --------------
-
-
-  const getBalanceByAddress = async (add: Address) => {
-    const balance = client.getBalance(add)
-    return balance;
-  }
-  // -------------- Master withdraw
-  const mainContractBalance = await getBalanceByAddress(masterContractAddress);
-
-  const contractWithdrawalBody = beginCell()
+  // -------------- WITHDRAWAL FROM MASTER BY OWNER
+  const mainContractBalance = await client.getBalance(masterContractAddress)
+  const withdrawalBody = beginCell()
     .storeUint(OPS.Withdrawal, 32) // opcode
     .storeUint(0, 64) // queryid
     .storeCoins(new BN(mainContractBalance.toNumber() - 1000000)) // amount
     .endCell()
+  const withdrawalOnMasterByOwnerTrx = await createTransaction(walletOwner, keyPairOwner, masterContractAddress, withdrawalBody);
+  // -------------- WITHDRAWAL FROM MASTER BY OWNER
 
-  let seqnoOwnerWithdrawalFromSc: number = await walletOwner.getSeqNo();
-
-  const ownerWithdrawalBalanceFromMaster = walletOwner.createTransfer({
-    secretKey: keyPairOwner.secretKey,
-    seqno: seqnoOwnerWithdrawalFromSc,
-    sendMode: SendMode.PAY_GAS_SEPARATLY + SendMode.IGNORE_ERRORS,
-    order: new InternalMessage({
-      to: masterContractAddress,
-      value: toNano(0.05),
-      bounce: false,
-      body: new CommonMessageInfo({
-        body: new CellMessage(contractWithdrawalBody),
-      })
-    })
-  });
-  // --------------
-  const ownerWalletBalance = await getBalanceByAddress(walletOwner.address);
-  console.log(ownerWalletBalance.toNumber())
-
-  let seqnoOwnerWithdrawal: number = await walletOwner.getSeqNo();
-
-  const ownerWithdrawalBalance = walletOwner.createTransfer({
+  // -------------- WITHDRAWAL FROM OWNER TO DEPOSITER BY OWNER
+  const ownerWalletBalance = await client.getBalance(walletOwner.address)
+  console.log(ownerWalletBalance.toNumber() - 100000000)
+  const seqnoOwnerWithdrawal: number = await walletOwner.getSeqNo();
+  const withdrawalOnOwnerByOwnerTrx = walletOwner.createTransfer({
     secretKey: keyPairOwner.secretKey,
     seqno: seqnoOwnerWithdrawal,
     sendMode: 64,
@@ -358,10 +183,9 @@ const emulateExecution = async () => {
       })
     })
   });
-  // --------------
+  // -------------- WITHDRAWAL FROM OWNER TO DEPOSITER BY OWNER
 
-  //
-  // --------------
+  // -------------- EXECUTION
   // setTimeout(async () => {
   //   await client.sendExternalMessage(walletOwner, masterContractDeployTrx); // deploy master
   // }, 10)
@@ -405,7 +229,7 @@ const emulateExecution = async () => {
   // await client.sendExternalMessage(walletOwner, ownerWithdrawalBalanceFromMaster) // withdrawal money from the sistem back to user wallet
   // --------------
   // --------------
-  await client.sendExternalMessage(walletOwner, ownerWithdrawalBalance) // withdrawal money from the sistem back to user wallet
+  // await client.sendExternalMessage(walletOwner, ownerWithdrawalBalance) // withdrawal money from the sistem back to user wallet
   // --------------
   // await client.sendExternalMessage(walletClient, userContractDeployTrx) // deploy user contract
   // await client.sendExternalMessage(walletOracle, oracleTransaction) // update master actual value
@@ -415,5 +239,6 @@ const emulateExecution = async () => {
   //setIntrarval for ton price update every 30sec
   //setIntrarval for user fetch every 15sec
   //when money will be gone from client sc then withdrawal all from master contract back to depositer
+  // -------------- EXECUTION
 }
 emulateExecution() 
