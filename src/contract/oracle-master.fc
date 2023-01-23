@@ -83,7 +83,7 @@ cell compose_create_account(int actual_value, slice client_owner_addr, slice ora
                 .store_slice(body)
                 .end_cell();
     ;;todo here 
-    send_raw_message(msg, 3); ;; withdrawal entire balance
+    send_raw_message(msg, 64); ;; withdrawal entire balance
   }
   return ();
 }

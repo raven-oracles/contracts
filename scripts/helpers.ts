@@ -1,4 +1,5 @@
 import { mnemonicNew, KeyPair, mnemonicToPrivateKey } from "ton-crypto";
+import BN from 'bn.js'
 import {
   Address,
   TonClient,
@@ -11,6 +12,13 @@ import {
   InternalMessage,
   CommonMessageInfo,
 } from 'ton';
+import CoinGecko from "coingecko-api";
+
+const CoinGeckoClient = new CoinGecko();
+export const getTonToUsdPrice = async () => {
+  return new BN((await CoinGeckoClient.coins.fetch("the-open-network", {})).data
+    .market_data.current_price.usd * 100);
+}
 
 enum SendMode {
   CARRRY_ALL_REMAINING_BALANCE = 128,
@@ -44,16 +52,16 @@ export const deploySmartContract = async (wallet: WalletContract, keyPair: KeyPa
   return trx;
 }
 
-export const createTransaction = async (wallet: WalletContract, keyPair: KeyPair, toAddress: Address, body: Cell) => {
+export const createTransaction = async (wallet: WalletContract, keyPair: KeyPair, toAddress: Address, body: Cell, value?: BN) => {
   let seqno: number = await wallet.getSeqNo();
-
+  // console.log(value)
   const trx = wallet.createTransfer({
     secretKey: keyPair.secretKey,
     seqno: seqno,
-    sendMode: SendMode.PAY_GAS_SEPARATLY + SendMode.IGNORE_ERRORS,
+    sendMode: SendMode.CARRRY_ALL_REMAINING_INCOMING_VALUE,
     order: new InternalMessage({
       to: toAddress,
-      value: 0,
+      value: value ? value : toNano(0.05),
       bounce: false,
       body: new CommonMessageInfo({
         body: new CellMessage(body),
@@ -64,17 +72,55 @@ export const createTransaction = async (wallet: WalletContract, keyPair: KeyPair
   return trx;
 }
 
-export const depositWaiter = async (client: TonClient, address: Address) => new Promise((res, _) => {
+export const seqnoWaiter = async (client: TonClient, wallet: WalletContract) => new Promise((res, _) => {
+  let oldSeqno = -1;
+  let counter = 0
   let i = setInterval(async () => {
-    const transactions = await client.getTransactions(address, { limit: 1 });
-    if (transactions.length > 0) {
+    counter++;
+    if (counter > 61) {
+      console.log('Something went wrong, check balance of wallet ', wallet.address)
+    }
+    const seqno: number = await wallet.getSeqNo();
+    if ((oldSeqno !== -1) && seqno !== oldSeqno) {
       clearInterval(i);
-      res(transactions[0].inMessage?.source)
+      res(true)
+    } else {
+      oldSeqno = seqno
     }
   }, 1000)
 })
 
-export const generateWallet = async (name: string, client: TonClient, mnemonic: string[]) => {
+export const transactionWaiter = async (client: TonClient, address: Address) => new Promise((res, _) => {
+  let oldHash = '';
+  let i = setInterval(async () => {
+    const transactions = await client.getTransactions(address, { limit: 1 });
+    if (transactions.length > 0) {
+      if (oldHash) {
+        clearInterval(i);
+        res(true)
+      } else {
+        oldHash = transactions[0].id.hash
+      }
+    } else {
+      oldHash = 'execute'
+    }
+  }, 2000)
+})
+
+export const depositWaiter: any = async (client: TonClient, address: Address) => new Promise((res, _) => {
+  let i = setInterval(async () => {
+    const transactions = await client.getTransactions(address, { limit: 1 });
+    if (transactions.length > 0) {
+      const depositer = transactions[0].inMessage?.source
+      if (depositer) {
+        clearInterval(i);
+        res(depositer)
+      }
+    }
+  }, 1000)
+})
+
+export const generateWallet = async (client: TonClient, mnemonic: any) => {
   // const mnemonic = await mnemonicNew();
   const keys = await mnemonicToPrivateKey(mnemonic);
   const wallet = WalletContract.create(
@@ -82,6 +128,11 @@ export const generateWallet = async (name: string, client: TonClient, mnemonic: 
     WalletV3R2Source.create({ publicKey: keys.publicKey, workchain: 0 })
   );
   const address = wallet.address.toFriendly();
-  console.log(`${name} wallet: ${address}`)
   return { keys, wallet, address }
 }
+
+export const sleep = async (val: number) => new Promise((res, _) => {
+  setTimeout(() => {
+    res(true);
+  }, val)
+})
