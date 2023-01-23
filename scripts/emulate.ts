@@ -90,10 +90,10 @@ const emulateExecution = async () => {
 
   // -------------- WALLETS ACTIVATION
   console.log(`Deposit 1TON to wallet ${owner.address}`)
-  const linkForOwner = `ton://transfer/${owner.address}?amount=100000000`
+  const linkForOwner = `ton://transfer/${owner.address}?amount=1000000000`
   qrcode.generate(linkForOwner, { small: true });
-  console.log(`Deposit 1TON to wallet ${client.address}`)
-  const linkForClient = `ton://transfer/${client.address}?amount=2500000000`
+  console.log(`Deposit 2TON to wallet ${client.address}`)
+  const linkForClient = `ton://transfer/${client.address}?amount=2000000000`
   qrcode.generate(linkForClient, { small: true });
   const depositer1 = (await depositWaiter(rpcClient, owner.address)).toFriendly();
   const depositer2 = (await depositWaiter(rpcClient, client.address)).toFriendly();
