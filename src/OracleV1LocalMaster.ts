@@ -27,11 +27,11 @@ export class OracleV1LocalMaster {
         return new OracleV1LocalMaster(contract, address);
     }
 
-    static createSignupPayload(sc_address: Address): Cell {
+    static createSignupPayload(user_sc_address: Address): Cell {
         return beginCell()
             .storeUint(OPS.Signup, 32) // opcode
             .storeUint(0, 64) // queryid
-            .storeAddress(sc_address)
+            .storeAddress(user_sc_address)
             .endCell();
     }
 }

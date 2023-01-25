@@ -1,9 +1,9 @@
 _ load_init_data () inline {
   slice ds = get_data().begin_parse();
-  int actual_value = ds~load_uint(64);
+  cell data_field = ds~load_ref();
 
   return (
-    actual_value
+    data_field
   );
 }
 
@@ -38,14 +38,19 @@ _ load_init_data () inline {
   }
 
   if (op == op::update()){
-    (int actual_value) = load_init_data();
+    (cell data_field) = load_init_data();
     int query = in_msg_body~load_uint(64);
-    int new_value = in_msg_body~load_uint(64);
-    set_data(begin_cell().store_uint(new_value, 64).end_cell());
+    cell new_data_field = in_msg_body~load_ref();
+    set_data(begin_cell().store_ref(new_data_field).end_cell());
   }
 }
 
-(int) get_actual_value() method_id {
-  (int actual_value) = load_init_data();
-  return (actual_value);
+(cell) get_data_field() method_id {
+  (cell data_field) = load_init_data();
+  return (data_field);
+}
+
+(int) get_data_field_value() method_id {
+  (cell data_field) = load_init_data();
+  return (data_field.begin_parse().preload_uint(32)); ;; works only for TON price case
 }

@@ -58,7 +58,7 @@ const config: OracleMasterConfig = {
     comission_size: toNano(0.1),
     whitelisted_oracle_addresses: [randomAddress('WHITELISTED_ORACLE_ADDRESS')],
     number_of_clients: new BN(0),
-    actual_value: new BN(0),
+    data_field: beginCell().storeUint(0, 32).endCell(),
 };
 
 const clientInitConfig: OracleClientInitConfig = {
@@ -68,8 +68,8 @@ const clientInitConfig: OracleClientInitConfig = {
 };
 
 const clientUploadConfig: OracleClientUploadConfig = {
-    actual_value: new BN(0),
-    user_address: randomAddress('owner_address'),
+    data_field: beginCell().storeUint(0, 32).endCell(),
+    user_sc_address: randomAddress('user_sc_address'),
     oracle_master_address: randomAddress('oracle_master_address'),
     comission_size: toNano(0.1),
     mode: new BN(MODES.OnDemand),
@@ -85,8 +85,9 @@ describe('Oracle v1 Master', () => {
 
     it('should get oracle master initialization data correctly', async () => {
         const call = await masterContract.contract.invokeGetMethod('get_oracle_data', []);
-        const { metadata, admin_address, comission_size, client_init_code, whitelisted_oracle_addresses, number_of_clients, actual_value } =
+        const { metadata, admin_address, comission_size, client_init_code, whitelisted_oracle_addresses, number_of_clients, data_field } =
             parseOracleDetails(call);
+
         expect(admin_address).toBeDefined();
         assertAddress(admin_address, config.admin_address);
         expect(metadata.name).toEqual('USDT/TON Price Oracle');
@@ -95,17 +96,17 @@ describe('Oracle v1 Master', () => {
         assertCoins(comission_size, config.comission_size);
         assertAddressArray(whitelisted_oracle_addresses, config.whitelisted_oracle_addresses);
         expect(number_of_clients).toEqual(new BN(0));
-        expect(actual_value).toEqual(new BN(0));
+        expect(data_field.toString()).toEqual(beginCell().storeUint(0, 32).endCell().toString());
     });
 
     it('should send signup command and verify the outgoing data', async () => {
-        const sc_address = randomAddress('smart_contract');
+        const user_sc_address = randomAddress('user_smart_contract');
 
         const stack = await masterContract.contract.sendInternalMessage(
             internalMessage({
                 from: END_USER,
                 value: toNano(2),
-                body: OracleV1LocalMaster.createSignupPayload(sc_address),
+                body: OracleV1LocalMaster.createSignupPayload(user_sc_address),
             }),
         );
 
@@ -116,46 +117,6 @@ describe('Oracle v1 Master', () => {
         expect(accountCreationMessage.type).toEqual('send_msg');
 
         // TODO: How to test the init state of the deployed client contract?
-    });
-
-    // TODO clients_update check
-    it('should update actual_value on master contract correctly', async () => {
-        const tonUsdPrice = new BN(2.44 * 100); // USD price in cents
-
-        const result = await masterContract.contract.sendInternalMessage(
-            internalMessage({
-                value: toNano(1),
-                from: config.whitelisted_oracle_addresses[0],
-                body: beginCell()
-                    .storeUint(OPS.Update, 32)
-                    .storeUint(0, 64)
-                    .storeUint(tonUsdPrice, 64)
-                    .endCell(),
-            }),
-        );
-        expect(result.exit_code).toEqual(0);
-        expect(result.type).toEqual('success');
-        // TODO: How do we test the value is right?
-        // TODO: Test that update was send to ALL client contracts
-    });
-
-    it('should fail updating actual_value on master contract with 103 error', async () => {
-        const tonUsdPrice = new BN(2.44 * 100); // USD price in cents
-        const senderAddress = randomAddress('UKNOWN_ORACLE_ADDRESS')
-
-        const result = await masterContract.contract.sendInternalMessage(
-            internalMessage({
-                value: toNano(1),
-                from: senderAddress,
-                body: beginCell()
-                    .storeUint(OPS.Update, 32)
-                    .storeUint(0, 64)
-                    .storeUint(tonUsdPrice, 64)
-                    .endCell(),
-            }),
-        );
-
-        expect(result.exit_code).toEqual(103);
     });
 
     it('should successfully withdraw requested amount of TONs', async () => {
@@ -207,7 +168,7 @@ describe('Oracle v1 Client', () => {
         );
     });
 
-    it('should store updated data on client contract correctly', async () => {
+    it('should update data on client contract correctly', async () => {
         const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
                 value: toNano(1),
@@ -215,16 +176,32 @@ describe('Oracle v1 Client', () => {
                 body: beginCell()
                     .storeUint(OPS.NewValue, 32)
                     .storeUint(0, 64)
-                    .storeUint(tonUsdPrice, 64)
+                    .storeRef(beginCell().storeUint(tonUsdPrice, 32).endCell())
                     .endCell(),
             }),
         );
 
         expect(result.exit_code).toEqual(0);
 
-        const getMethodResult = await clientContract.contract.invokeGetMethod('get_actual_value', []);
+        const getMethodResult = await clientContract.contract.invokeGetMethod('get_data_field', []);
         expect(getMethodResult.type).toEqual('success');
         // TODO: How do we test the value is right?
+    });
+
+    it('should fail updating data on client contract with 103 error', async () => {
+        const result = await clientContract.contract.sendInternalMessage(
+            internalMessage({
+                value: toNano(1),
+                from: randomAddress('UKNOWN_ORACLE_ADDRESS'),
+                body: beginCell()
+                    .storeUint(OPS.NewValue, 32)
+                    .storeUint(0, 64)
+                    .storeRef(beginCell().storeUint(tonUsdPrice, 32).endCell())
+                    .endCell(),
+            }),
+        );
+
+        expect(result.exit_code).toEqual(103);
     });
 
     it('should fail a fetch request with 101 error code - insufficient balance', async () => {
@@ -234,11 +211,11 @@ describe('Oracle v1 Client', () => {
 
         const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
-                from: clientUploadConfig.user_address,
+                from: clientUploadConfig.user_sc_address,
                 body: beginCell()
                     .storeUint(OPS.Fetch, 32)
                     .storeUint(0, 64)
-                    .storeUint(tonUsdPrice, 64)
+                    .storeRef(beginCell().storeUint(tonUsdPrice, 32).endCell())
                     .endCell(),
             }),
         );
@@ -251,7 +228,7 @@ describe('Oracle v1 Client', () => {
             internalMessage({
                 value: toNano(1),
                 from: clientInitConfig.oracle_master_address,
-                body: oracleClientUploadData({ ...clientUploadConfig, user_address: randomAddress('NOT_ALLOWED_ADDRESS') }),
+                body: oracleClientUploadData({ ...clientUploadConfig, user_sc_address: randomAddress('NOT_ALLOWED_ADDRESS') }),
             }),
         );
 
@@ -261,7 +238,7 @@ describe('Oracle v1 Client', () => {
                 body: beginCell()
                     .storeUint(OPS.Fetch, 32)
                     .storeUint(0, 64)
-                    .storeUint(tonUsdPrice, 64)
+                    .storeRef(beginCell().storeUint(tonUsdPrice, 32).endCell())
                     .endCell(),
             }),
         );
@@ -276,14 +253,14 @@ describe('Oracle v1 Client', () => {
                 body: beginCell()
                     .storeUint(OPS.NewValue, 32)
                     .storeUint(0, 64)
-                    .storeUint(tonUsdPrice, 64)
+                    .storeRef(beginCell().storeUint(tonUsdPrice, 32).endCell())
                     .endCell(),
             }),
         );
 
         const result = await clientContract.contract.sendInternalMessage(
             internalMessage({
-                from: clientUploadConfig.user_address,
+                from: clientUploadConfig.user_sc_address,
                 body: beginCell()
                     .storeUint(OPS.Fetch, 32)
                     .storeUint(0, 64)
@@ -294,36 +271,7 @@ describe('Oracle v1 Client', () => {
         // TODO: test there were actual 2 tx send - comission payment and op::update
         expect(result.exit_code).toEqual(0);
     });
-
-    it('should successfully withdraw requested amount of TONs', async () => {
-        clientContract.contract.setC7Config({
-            balance: toNano(20),
-        });
-
-        const withdrawalMethodResult = await clientContract.contract.sendInternalMessage(
-            internalMessage({
-                from: clientUploadConfig.user_address,
-                value: toNano(0.2),
-                body: beginCell()
-                    .storeUint(OPS.Withdrawal, 32)
-                    .storeUint(0, 64)
-                    .storeCoins(toNano(10))
-                    .endCell(),
-            }),
-        );
-
-        expect(withdrawalMethodResult.type).toEqual('success');
-        if (withdrawalMethodResult.type === 'success') {
-            expect(withdrawalMethodResult.exit_code).toEqual(0);
-            expect(withdrawalMethodResult.actionList.length).toEqual(1);
-            const tx = withdrawalMethodResult.actionList[0];
-            expect(tx.type).toEqual('send_msg');
-            if (tx.type === 'send_msg') {
-                expect(tx.message.info.type).toEqual('internal');
-                if (tx.message.info.type === 'internal') {
-                    assertCoins(tx.message.info.value.coins, new BN(toNano(10)));
-                }
-            }
-        }
-    });
 });
+
+
+

@@ -121,7 +121,7 @@ export function oracleMasterInitData(config: {
     comission_size: BN;
     whitelisted_oracle_addresses: Address[];
     number_of_clients: BN;
-    actual_value: BN;
+    data_field: Cell;
 }): Cell {
     return beginCell()
         .storeAddress(config.admin_address)
@@ -129,8 +129,8 @@ export function oracleMasterInitData(config: {
         .storeRef(oracleClientSourceV1CodeCell)
         .storeCoins(config.comission_size)
         .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
-        .storeUint(config.number_of_clients, 64)
-        .storeUint(config.actual_value, 64)
+        .storeUint(config.number_of_clients, 32)
+        .storeRef(config.data_field)
         .endCell();
 }
 
@@ -159,7 +159,7 @@ export interface OracleMasterConfig {
     comission_size: BN;
     whitelisted_oracle_addresses: Address[];
     number_of_clients: BN,
-    actual_value: BN,
+    data_field: Cell,
 }
 
 export interface OracleClientInitConfig {
@@ -184,8 +184,8 @@ export function oracleUserInitData(config: OracleUserInitConfig): Cell {
 }
 
 export interface OracleClientUploadConfig {
-    actual_value: BN;
-    user_address: Address;
+    data_field: Cell;
+    user_sc_address: Address;
     oracle_master_address: Address;
     comission_size: BN;
     mode: BN;
@@ -196,11 +196,11 @@ export function oracleClientUploadData(config: OracleClientUploadConfig): Cell {
     return beginCell()
         .storeUint(OPS.CreateAccount, 32)
         .storeUint(0, 64)
-        .storeAddress(config.user_address)
+        .storeAddress(config.user_sc_address)
         .storeCoins(config.comission_size)
         .storeUint(config.mode, 32)
         .storeUint(config.interval, 32)
-        .storeUint(config.actual_value, 64)
+        .storeRef(config.data_field)
         .endCell();
 }
 

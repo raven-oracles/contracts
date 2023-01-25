@@ -23,10 +23,10 @@ const config: OracleMasterConfig = {
     image: 'https://www.linkpicture.com/q/download_183.png', // Image url
     description: 'This is master oracle for USDT/TON price',
   },
-  comission_size: toNano(0.1),
+  comission_size: toNano(0.2),
   whitelisted_oracle_addresses: [],
   number_of_clients: new BN(0),
-  actual_value: new BN(0),
+  data_field: beginCell().storeUint(0, 32).endCell(),
 };
 
 const clientInitConfig: OracleClientInitConfig = {
@@ -88,7 +88,7 @@ const emulateExecution = async () => {
     const updateBody = beginCell()
       .storeUint(OPS.Update, 32) // opcode
       .storeUint(0, 64) // queryid
-      .storeUint(await getTonToUsdPrice(), 64)
+      .storeRef(beginCell().storeUint(await getTonToUsdPrice(), 32).endCell())
       .endCell()
     return await createTransaction(oracle.wallet, oracle.keys, masterContractAddress, updateBody);
   }
@@ -171,14 +171,14 @@ const emulateExecution = async () => {
   const updatePrice = async (intervalUpdateStep: number) => {
     await rpcClient.sendExternalMessage(oracle.wallet, await updateOnMasterByOracleTrx()) // update master actual value
     await seqnoWaiter(rpcClient, oracle.wallet)
-    const newValue = await rpcClient.callGetMethod(clientContractAddress, 'get_actual_value')
+    const newValue = await rpcClient.callGetMethod(clientContractAddress, 'get_data_field_value') // works only for this case
     if (intervalUpdateStep !== 1) console.log(`Price has been updated on client smart contract ${intervalUpdateStep} time! New value: 1TON ~ ${parseInt(newValue.stack[0][1]) / 100}$`)
   }
 
   const fetchPrice = async (intervalFetchStep: number) => {
     await rpcClient.sendExternalMessage(client.wallet, await fetchOnClientByUserTrx()) // fetch actual value from client contract
     await seqnoWaiter(rpcClient, client.wallet)
-    const newValue = await rpcClient.callGetMethod(userContractAddress, 'get_actual_value')
+    const newValue = await rpcClient.callGetMethod(userContractAddress, 'get_data_field_value') // works only for this case
     console.log(`Price has been fetched from client smart contract by user smart contract ${intervalFetchStep} time! New value: 1TON ~ ${parseInt(newValue.stack[0][1]) / 100}$`)
   }
   // -------------- HELPERS FOR INTERVALS 

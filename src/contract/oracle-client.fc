@@ -1,9 +1,9 @@
 _ load_data() inline {
   slice ds = get_data().begin_parse();
-  int actual_value = ds~load_uint(64);
+  cell data_field = ds~load_ref();
 
   var addresses = ds~load_ref().begin_parse();
-  slice user_address = addresses~load_msg_addr(); 
+  slice user_sc_address = addresses~load_msg_addr(); 
   slice master_address = addresses~load_msg_addr();
 
   int comission_size = ds~load_coins();
@@ -12,8 +12,8 @@ _ load_data() inline {
   int client_id = ds~load_uint(32);
 
   return (
-    actual_value,
-    user_address,
+    data_field,
+    user_sc_address,
     master_address,
     comission_size,
     mode,
@@ -33,10 +33,10 @@ _ load_init_data () inline {
   );
 }
 
-() save_data (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) impure inline {
+() save_data (cell data_field, slice user_sc_address, slice master_address, int comission_size, int mode, int interval, int client_id) impure inline {
   cell data = begin_cell()
-      .store_uint(actual_value, 64)
-      .store_ref(begin_cell().store_slice(user_address).store_slice(master_address).end_cell())
+      .store_ref(data_field)
+      .store_ref(begin_cell().store_slice(user_sc_address).store_slice(master_address).end_cell())
       .store_coins(comission_size)
       .store_uint(mode, 32)
       .store_uint(interval, 32)
@@ -56,11 +56,11 @@ _ load_init_data () inline {
   send_raw_message(comission_message, 64); ;; pay fees
 }
 
-() compose_update_message ( int query_id, int actual_value, slice sc_address) impure {
-  slice update_msg_body = begin_cell().store_uint(op::update(), 32).store_uint(query_id, 64).store_uint(actual_value, 64).end_cell().begin_parse();
+() compose_update_message ( int query_id, cell data_field, slice user_sc_address) impure {
+  slice update_msg_body = begin_cell().store_uint(op::update(), 32).store_uint(query_id, 64).store_ref(data_field).end_cell().begin_parse();
   cell update_message = begin_cell()
         .store_uint(0x18, 6)
-        .store_slice(sc_address)
+        .store_slice(user_sc_address)
         .store_coins(50000000) ;; TODO check this one / do we need to send 0.05TON with mode 64??? find alternative
         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
         .store_slice(update_msg_body)
@@ -68,10 +68,10 @@ _ load_init_data () inline {
   send_raw_message(update_message, 64); 
 }
 
-() compose_withdrawal (slice user_address, int withdrawal_amount) impure {
+() compose_withdrawal (slice user_sc_address, int withdrawal_amount) impure {
   cell mssage = begin_cell()
     .store_uint(0x18, 6)
-    .store_slice(user_address)
+    .store_slice(user_sc_address)
     .store_coins(withdrawal_amount)
     .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
     .end_cell();
@@ -105,59 +105,64 @@ _ load_init_data () inline {
   
     throw_unless(103, sender_address.slice_hash() == master_address.slice_hash()); ;; permission denied
 
-    slice user_address = in_msg_body~load_msg_addr();
+    slice user_sc_address = in_msg_body~load_msg_addr();
     int comission_size = in_msg_body~load_coins();
     int mode = in_msg_body~load_uint(32);
     int interval = in_msg_body~load_uint(32);
-    int actual_value = in_msg_body~load_uint(64);
+    cell data_field = in_msg_body~load_ref();
     
-    save_data(actual_value, user_address, master_address, comission_size, mode, interval, client_id); 
+    save_data(data_field, user_sc_address, master_address, comission_size, mode, interval, client_id); 
 
     return();
   }
   
-  (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();
+  (cell data_field, slice user_sc_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();
 
   if (op == op::new_value()) {
     throw_unless(103, sender_address.slice_hash() == master_address.slice_hash()); ;; permission denied
-    int new_actual_value = in_msg_body~load_uint(64);
-    save_data(new_actual_value, user_address, master_address, comission_size, mode, interval, client_id); 
+    cell new_data_field = in_msg_body~load_ref();
+    save_data(new_data_field, user_sc_address, master_address, comission_size, mode, interval, client_id); 
     return();
   }
 
   if (op == op::fetch()) {
-    throw_unless(103, sender_address.slice_hash() == user_address.slice_hash()); ;; permission denied
+    throw_unless(103, sender_address.slice_hash() == user_sc_address.slice_hash()); ;; permission denied
     throw_if(101, balance < comission_size); ;; insufficient funds
     
     ;; TODO: none of 2 transactions are getting sent, must be debugged
-    compose_update_message(query_id, actual_value, user_address);
+    compose_update_message(query_id, data_field, user_sc_address);
     compose_comission_payment(master_address, comission_size);
     
     return();
   }
 
   if (op == op::withdrawal()) {
-    throw_unless(103, sender_address.slice_hash() == user_address.slice_hash()); ;; permission denied 
+    throw_unless(103, sender_address.slice_hash() == user_sc_address.slice_hash()); ;; permission denied 
     int withdrawal_amount = in_msg_body~load_coins();
     throw_unless(101, withdrawal_amount <= my_balance - 1000000);
-    compose_withdrawal(user_address, withdrawal_amount); 
+    compose_withdrawal(user_sc_address, withdrawal_amount); 
     return();                            
   }
 
   throw(0xffff);
 }
 
-(int, slice, slice, int, int, int, int ) get_client_data() method_id {
-  (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
-  return (actual_value, user_address, master_address, comission_size, mode, interval, client_id);
+(cell, slice, slice, int, int, int, int ) get_client_data() method_id {
+  (cell data_field, slice user_sc_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
+  return (data_field, user_sc_address, master_address, comission_size, mode, interval, client_id);
 }
 
-(int) get_actual_value() method_id {
-  (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
-  return (actual_value);
+(cell) get_data_field() method_id {
+  (cell data_field, slice user_sc_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
+  return (data_field);
 }
 
 (int) get_client_id() method_id {
-  (int actual_value, slice user_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
+  (cell data_field, slice user_sc_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
   return (client_id);
+}
+
+(int) get_data_field_value() method_id {
+  (cell data_field, slice user_sc_address, slice master_address, int comission_size, int mode, int interval, int client_id) = load_data();  
+  return (data_field.begin_parse().preload_uint(32)); ;; works only for TON price case
 }
