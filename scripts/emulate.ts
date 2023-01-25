@@ -45,48 +45,11 @@ const emulateExecution = async () => {
     apiKey
   });
 
-  const mnemonicOracle = await mnemonicNew();
-  // const mnemonicOracle = [
-  //   'sister', 'upgrade', 'eager',
-  //   'certain', 'ahead', 'eight',
-  //   'patch', 'rose', 'blue',
-  //   'celery', 'process', 'human',
-  //   'urban', 'peasant', 'crunch',
-  //   'post', 'fantasy', 'voice',
-  //   'razor', 'adjust', 'staff',
-  //   'pyramid', 'aspect', 'erode'
-  // ]
-  const oracle = await generateWallet(rpcClient, mnemonicOracle);
+  const oracle = await generateWallet(rpcClient);
   config.whitelisted_oracle_addresses = [oracle.wallet.address]
-
-  const mnemonicOwner = await mnemonicNew();
-  // const mnemonicOwner =
-  //   [
-  //     'spice', 'option', 'broken',
-  //     'identify', 'beach', 'liberty',
-  //     'fossil', 'age', 'camera',
-  //     'lion', 'comfort', 'fold',
-  //     'cattle', 'claw', 'grape',
-  //     'width', 'scare', 'column',
-  //     'early', 'exile', 'alone',
-  //     'cradle', 'ordinary', 'road'
-  //   ]
-  const owner = await generateWallet(rpcClient, mnemonicOwner);
+  const owner = await generateWallet(rpcClient);
   config.admin_address = owner.wallet.address
-
-  const mnemonicClient = await mnemonicNew();
-  // const mnemonicClient =
-  //   [
-  //     'target', 'staff', 'exact',
-  //     'jacket', 'obscure', 'assist',
-  //     'note', 'cat', 'earth',
-  //     'find', 'pull', 'subject',
-  //     'guilt', 'furnace', 'fall',
-  //     'magic', 'minimum', 'stamp',
-  //     'add', 'keen', 'dwarf',
-  //     'season', 'mom', 'fetch'
-  //   ]
-  const client = await generateWallet(rpcClient, mnemonicClient);
+  const client = await generateWallet(rpcClient);
 
   // -------------- WALLETS ACTIVATION
   console.log(`Deposit 1TON to wallet ${owner.address}`)
@@ -97,9 +60,8 @@ const emulateExecution = async () => {
   qrcode.generate(linkForClient, { small: true });
   const depositer1 = (await depositWaiter(rpcClient, owner.address)).toFriendly();
   const depositer2 = (await depositWaiter(rpcClient, client.address)).toFriendly();
-  // const depositer1 = 'kQAf9V4MmFbGU_BMKTxJuM4pFSM5E7B70ECi_Od0hnHMGQps'
-  console.log(`Depositer 1st wallet: ${depositer1}`)
-  // console.log(`Depositer 2nd wallet: ${depositer2}`)
+  console.log(`Depositer to owner wallet: ${depositer1}`)
+  console.log(`Depositer to client wallet: ${depositer2}`)
   // -------------- WALLETS ACTIVATION
 
   console.log(`owner wallet: ${owner.address}`)
@@ -176,6 +138,53 @@ const emulateExecution = async () => {
   const fetchOnClientByUserTrx = () => createTransaction(client.wallet, client.keys, userContractAddress, fetchBody);
   // -------------- FETCH DATA FROM CLIENT SC CALL 
 
+  // -------------- WITHDRAWAL FROM MASTER BY OWNER
+  const withdrawalOnMasterByOwnerTrx = async () => {
+    const mainContractBalance = await rpcClient.getBalance(masterContractAddress)
+    const withdrawalBody = beginCell()
+      .storeUint(OPS.Withdrawal, 32) // opcode
+      .storeUint(0, 64) // queryid
+      .storeCoins(new BN(mainContractBalance.toNumber() - 100000000)) // amount
+      .endCell()
+    return await createTransaction(owner.wallet, owner.keys, masterContractAddress, withdrawalBody);
+  }
+  // -------------- WITHDRAWAL FROM MASTER BY OWNER
+
+  // -------------- WITHDRAWAL FROM OWNER TO DEPOSITER BY OWNER
+  const withdrawalOnOwnerByOwnerTrx = async () => {
+    const ownerWalletBalance = await rpcClient.getBalance(owner.wallet.address)
+    const seqnoOwnerWithdrawal: number = await owner.wallet.getSeqNo();
+    return await owner.wallet.createTransfer({
+      secretKey: owner.keys.secretKey,
+      seqno: seqnoOwnerWithdrawal,
+      sendMode: 64,
+      order: new InternalMessage({
+        to: Address.parseFriendly(depositer1).address,
+        value: new BN(ownerWalletBalance.toNumber() - 100000000),
+        bounce: false,
+        body: new CommonMessageInfo({
+        })
+      })
+    });
+  }
+  // -------------- WITHDRAWAL FROM OWNER TO DEPOSITER BY OWNER
+
+  // -------------- HELPERS FOR INTERVALS 
+  const updatePrice = async (intervalUpdateStep: number) => {
+    await rpcClient.sendExternalMessage(oracle.wallet, await updateOnMasterByOracleTrx()) // update master actual value
+    await seqnoWaiter(rpcClient, oracle.wallet)
+    const newValue = await rpcClient.callGetMethod(clientContractAddress, 'get_actual_value')
+    if (intervalUpdateStep !== 1) console.log(`Price has been updated on client smart contract ${intervalUpdateStep} time! New value: 1TON ~ ${parseInt(newValue.stack[0][1]) / 100}$`)
+  }
+
+  const fetchPrice = async (intervalFetchStep: number) => {
+    await rpcClient.sendExternalMessage(client.wallet, await fetchOnClientByUserTrx()) // fetch actual value from client contract
+    await seqnoWaiter(rpcClient, client.wallet)
+    const newValue = await rpcClient.callGetMethod(userContractAddress, 'get_actual_value')
+    console.log(`Price has been fetched from client smart contract by user smart contract ${intervalFetchStep} time! New value: 1TON ~ ${parseInt(newValue.stack[0][1]) / 100}$`)
+  }
+  // -------------- HELPERS FOR INTERVALS 
+
   // ------------- EXECUTION
   console.log('Execution has been started!')
   await rpcClient.sendExternalMessage(owner.wallet, await depositToOracleByOwnerTrx()); // deploy oracle 
@@ -191,13 +200,7 @@ const emulateExecution = async () => {
   await seqnoWaiter(rpcClient, client.wallet)
   console.log('Done signup!')
 
-  const updatePrice = async (intervalUpdateStep: number) => {
-    await rpcClient.sendExternalMessage(oracle.wallet, await updateOnMasterByOracleTrx()) // update master actual value
-    await seqnoWaiter(rpcClient, oracle.wallet)
-    const newValue = await rpcClient.callGetMethod(clientContractAddress, 'get_actual_value')
-    if (intervalUpdateStep !== 1) console.log(`Price has been updated on client smart contract ${intervalUpdateStep} time! New value: 1TON ~ ${parseInt(newValue.stack[0][1]) / 100}$`)
-  }
-
+  // ------------- UPDATE PRICE / FETCH PRICE / STOP WHEN BALANCE FOR COMISSION PAYMENT IS GONE
   await updatePrice(1)
   await updatePrice(2)
   let intervalUpdateStep = 2;
@@ -205,21 +208,12 @@ const emulateExecution = async () => {
     intervalUpdateStep++;
     await updatePrice(intervalUpdateStep)
   }, 20000)
-
-  const fetchPrice = async (intervalFetchStep: number) => {
-    await rpcClient.sendExternalMessage(client.wallet, await fetchOnClientByUserTrx()) // fetch actual value from client contract
-    await seqnoWaiter(rpcClient, client.wallet)
-    const newValue = await rpcClient.callGetMethod(userContractAddress, 'get_actual_value')
-    console.log(`Price has been fetched from client smart contract by user smart contract ${intervalFetchStep} time! New value: 1TON ~ ${parseInt(newValue.stack[0][1]) / 100}$`)
-  }
-
   await fetchPrice(1)
   let intervalFetchStep = 1;
   let intervalFetch = setInterval(async () => {
     intervalFetchStep++;
     await fetchPrice(intervalFetchStep)
   }, 20000)
-
   const waiter: any = async () => new Promise((res, _) => {
     let i = setInterval(async () => {
       const clientContractBalance = await rpcClient.getBalance(clientContractAddress)
@@ -230,41 +224,16 @@ const emulateExecution = async () => {
       }
     }, 2000)
   })
-
   await waiter();
-
   clearInterval(intervalUpdate)
   clearInterval(intervalFetch)
   console.log('Done fetching price from client contract by user!')
-  // -------------- WITHDRAWAL FROM MASTER BY OWNER
-  const mainContractBalance = await rpcClient.getBalance(masterContractAddress)
-  const withdrawalBody = beginCell()
-    .storeUint(OPS.Withdrawal, 32) // opcode
-    .storeUint(0, 64) // queryid
-    .storeCoins(new BN(mainContractBalance.toNumber() - 100000000)) // amount
-    .endCell()
-  const withdrawalOnMasterByOwnerTrx = () => createTransaction(owner.wallet, owner.keys, masterContractAddress, withdrawalBody);
-  // -------------- WITHDRAWAL FROM MASTER BY OWNER
+  // ------------- UPDATE PRICE / FETCH PRICE / STOP WHEN BALANCE FOR COMISSION PAYMENT IS GONE
+
   await rpcClient.sendExternalMessage(owner.wallet, await withdrawalOnMasterByOwnerTrx()) // withdrawal money from the sistem back to user wallet
   await seqnoWaiter(rpcClient, owner.wallet)
   console.log('Done withdrawal from master sc!')
-  // -------------- WITHDRAWAL FROM OWNER TO DEPOSITER BY OWNER
-  const ownerWalletBalance = await rpcClient.getBalance(owner.wallet.address)
-  const seqnoOwnerWithdrawal: number = await owner.wallet.getSeqNo();
-  const withdrawalOnOwnerByOwnerTrx = owner.wallet.createTransfer({
-    secretKey: owner.keys.secretKey,
-    seqno: seqnoOwnerWithdrawal,
-    sendMode: 64,
-    order: new InternalMessage({
-      to: Address.parseFriendly(depositer1).address,
-      value: new BN(ownerWalletBalance.toNumber() - 100000000),
-      bounce: false,
-      body: new CommonMessageInfo({
-      })
-    })
-  });
-  // -------------- WITHDRAWAL FROM OWNER TO DEPOSITER BY OWNER
-  await rpcClient.sendExternalMessage(owner.wallet, withdrawalOnOwnerByOwnerTrx) // withdrawal money from the sistem back to user wallet
+  await rpcClient.sendExternalMessage(owner.wallet, await withdrawalOnOwnerByOwnerTrx()) // withdrawal money from the sistem back to user wallet
   await seqnoWaiter(rpcClient, owner.wallet)
   console.log('Done withdrawal from owner wallet!')
   console.log('-----------\nDone raven v1 script!\n-----------')

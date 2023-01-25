@@ -135,7 +135,7 @@ _ load_init_data () inline {
     
     return();
   }
-  ;;TODO NORM WITHDrawal
+  ;;TODO withdrawal with specific amount 
   ;;  if (op == op::withdrawal()) {
   ;;    throw_unless(103, sender_address.slice_hash() == admin_address.slice_hash());
   ;;      int withdrawal_amount = in_msg_body~load_coins();

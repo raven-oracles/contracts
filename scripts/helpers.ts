@@ -54,7 +54,6 @@ export const deploySmartContract = async (wallet: WalletContract, keyPair: KeyPa
 
 export const createTransaction = async (wallet: WalletContract, keyPair: KeyPair, toAddress: Address, body: Cell, value?: BN) => {
   let seqno: number = await wallet.getSeqNo();
-  // console.log(value)
   const trx = wallet.createTransfer({
     secretKey: keyPair.secretKey,
     seqno: seqno,
@@ -120,8 +119,8 @@ export const depositWaiter: any = async (client: TonClient, address: Address) =>
   }, 1000)
 })
 
-export const generateWallet = async (client: TonClient, mnemonic: any) => {
-  // const mnemonic = await mnemonicNew();
+export const generateWallet = async (client: TonClient) => {
+  const mnemonic = await mnemonicNew()
   const keys = await mnemonicToPrivateKey(mnemonic);
   const wallet = WalletContract.create(
     client,
