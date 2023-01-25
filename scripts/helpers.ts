@@ -15,6 +15,7 @@ import {
 import CoinGecko from "coingecko-api";
 
 const CoinGeckoClient = new CoinGecko();
+
 export const getTonToUsdPrice = async () => {
   return new BN((await CoinGeckoClient.coins.fetch("the-open-network", {})).data
     .market_data.current_price.usd * 100);

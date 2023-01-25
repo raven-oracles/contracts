@@ -8,9 +8,7 @@ import {
   InternalMessage,
   fromNano,
   CommonMessageInfo,
-  beginDict,
 } from 'ton';
-import { mnemonicNew } from "ton-crypto";
 import { randomAddress } from '../src/utils/randomAddress';
 import { OPS, OracleClientInitConfig, OracleMasterConfig } from '../src/OracleV1.data';
 import { oracleMasterInitData, oracleUserInitData, oracleClientInitData } from '../src/OracleV1.data';

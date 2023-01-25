@@ -61,21 +61,21 @@ _ load_init_data () inline {
   cell update_message = begin_cell()
         .store_uint(0x18, 6)
         .store_slice(sc_address)
-        .store_coins(50000000)
+        .store_coins(50000000) ;; TODO check this one / do we need to send 0.05TON with mode 64??? find alternative
         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
         .store_slice(update_msg_body)
         .end_cell();
   send_raw_message(update_message, 64); 
 }
 
-() compose_withdrawal (slice sender_address) impure {
+() compose_withdrawal (slice user_address, int withdrawal_amount) impure {
   cell mssage = begin_cell()
     .store_uint(0x18, 6)
-    .store_slice(sender_address)
-    .store_coins(0)
+    .store_slice(user_address)
+    .store_coins(withdrawal_amount)
     .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
     .end_cell();
-  send_raw_message(mssage, 128); ;; withdrawal entire balance
+  send_raw_message(mssage, 64); 
 }
 
 () recv_internal (int my_balance, int msg_value, cell in_msg, slice in_msg_body) impure {
@@ -135,24 +135,13 @@ _ load_init_data () inline {
     
     return();
   }
-  ;;TODO withdrawal with specific amount 
-  ;;  if (op == op::withdrawal()) {
-  ;;    throw_unless(103, sender_address.slice_hash() == admin_address.slice_hash());
-  ;;      int withdrawal_amount = in_msg_body~load_coins();
-  ;;      throw_unless(101, withdrawal_amount <= my_balance - 1000000);
-  ;;      cell withdraw_msg = begin_cell()
-  ;;          .store_uint(0x18, 6)
-  ;;          .store_slice(admin_address)
-  ;;          .store_coins(withdrawal_amount)
-  ;;          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-  ;;          .end_cell();
-  ;;      send_raw_message(withdraw_msg, 64); ;; withdrawal entire balance
-  ;;      return();
-  ;;  }
+
   if (op == op::withdrawal()) {
     throw_unless(103, sender_address.slice_hash() == user_address.slice_hash()); ;; permission denied 
-    compose_withdrawal( user_address); ;; TODO change withdrawal to 64 code maybe
-    return();
+    int withdrawal_amount = in_msg_body~load_coins();
+    throw_unless(101, withdrawal_amount <= my_balance - 1000000);
+    compose_withdrawal(user_address, withdrawal_amount); 
+    return();                            
   }
 
   throw(0xffff);
