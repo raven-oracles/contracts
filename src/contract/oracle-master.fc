@@ -134,7 +134,7 @@ cell compose_create_account(int actual_value, slice client_owner_addr, slice ora
         cell withdraw_msg = begin_cell()
             .store_uint(0x18, 6)
             .store_slice(admin_address)
-            .store_coins(withdrawal_amount - 1000000)
+            .store_coins(withdrawal_amount)
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .end_cell();
         send_raw_message(withdraw_msg, 64); ;; withdrawal entire balance

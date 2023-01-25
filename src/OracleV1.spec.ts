@@ -294,4 +294,36 @@ describe('Oracle v1 Client', () => {
         // TODO: test there were actual 2 tx send - comission payment and op::update
         expect(result.exit_code).toEqual(0);
     });
+
+    it('should successfully withdraw requested amount of TONs', async () => {
+        clientContract.contract.setC7Config({
+            balance: toNano(20),
+        });
+
+        const withdrawalMethodResult = await clientContract.contract.sendInternalMessage(
+            internalMessage({
+                from: clientUploadConfig.user_address,
+                value: toNano(0.2),
+                body: beginCell()
+                    .storeUint(OPS.Withdrawal, 32)
+                    .storeUint(0, 64)
+                    .storeCoins(toNano(10))
+                    .endCell(),
+            }),
+        );
+
+        expect(withdrawalMethodResult.type).toEqual('success');
+        if (withdrawalMethodResult.type === 'success') {
+            expect(withdrawalMethodResult.exit_code).toEqual(0);
+            expect(withdrawalMethodResult.actionList.length).toEqual(1);
+            const tx = withdrawalMethodResult.actionList[0];
+            expect(tx.type).toEqual('send_msg');
+            if (tx.type === 'send_msg') {
+                expect(tx.message.info.type).toEqual('internal');
+                if (tx.message.info.type === 'internal') {
+                    assertCoins(tx.message.info.value.coins, new BN(toNano(10)));
+                }
+            }
+        }
+    });
 });
