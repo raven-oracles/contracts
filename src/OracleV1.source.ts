@@ -1,27 +1,43 @@
-import { Cell } from 'ton';
-import { combineFunc } from './utils/combineFunc';
+import { Cell } from "ton";
+import { combineFunc } from "./utils/combineFunc";
 
 export const oracleMasterSourceV1 = () => {
     return combineFunc(__dirname, [
-        './contract/imports/stdlib.fc',
-        './contract/imports/params.fc',
-        './contract/imports/constants.fc',
-        './contract/imports/op-codes.fc',
-        './contract/imports/modes.fc',
-        './contract/imports/utils.fc',
-        './contract/imports/discovery-params.fc',
-        './contract/oracle-master.fc',
-    ]);
-};
+      './contract/imports/stdlib.fc',
+      './contract/imports/params.fc',
+      './contract/imports/constants.fc',
+      './contract/imports/op-codes.fc',
+      './contract/imports/modes.fc',
+      './contract/imports/utils.fc',
+      './contract/imports/discovery-params.fc',
+      './contract/oracle-master.fc',
+    ])
+  }
 
 const oracleMasterSourceV1CodeBoc =
-    'te6ccsECCAEAASAAAA0AEgAXAF8AbgBzANEBIAEU/wD0pBP0vPLICwECAWIFAgIBIAQDAIu85NdqJofSBqan0gGDYRfBQqkBk4KhIBqhIoGjhkZZ+oAeeLAOeLZgDni2SQ5GWCifoACXoAZYBk/IA4OmRlgWUD5f/k6EABm+149qJofSBqan0gGEAgLMBwYAt7XwUCCKBqCqZOCoSAaoSKBo4ZGWfqAHniwDni2YA54tkkORlgon6AAl6AGWAZJB8gDg6ZGWBZQPl/+ToAblkZY/ln+S7wAxkZYKoAueLKAH9AQnltYlmZmS4/YBAJnZmRY4BJL4HwaGmB/SAYALjYSS+B8BDBBJiWgFz5aCf2omh9IGpqfSAYNhECaY/pn/0gGALBBJiWgFCBYADLgogaIJh4BXAvg0IH+XhDtwRQo=';
+  'te6ccsECEAEAAmsAAA0AEgAXADIANwA8AFYAbgCMAJEAlgD5AWMB4gJjAmsBFP8A9KQT9LzyyAsBAgFiCQICASAEAwAxvbUfaiaH0gamp9AGoA6HoCgOmP6hgLL4NAIBIAgFAgEgBwYAL7dCnaiaH0gamp9AGoA6HoCgOmP6hg2MMAArt149qJofSBqan0AagDoegKA6Y/qGEAA3uhle1E0PpA1NT6ANQB0PQFAdMf1DBsYdDXCx+AICzA0KAgFIDAsAwVcJNTArmOVqT4KFMUAnACyFjPFssfySHIywET9AAS9ADLAMn5AHB0yMsCygfL/8nQcIIQ5eEb6cjLH8s/UjDMydBwgBjIywVQA88Wggr68ID6AhLLagHPFsmAQPsA6F8EgAz1MTU1+ChAYwJwAshYzxbLH8khyMsBE/QAEvQAywDJIPkAcHTIywLKB8v/ydCCEIZgqdwQNEZQcHCCEC8gZ8LIyx/LP1AEzxZY+gLLH8sfzMl3gBjIywVQBM8WWPoCEstrEszMyXH7AIAffZBjgEkvgnAA6GmB/SAYEH0iGIE42EkvgvB2omh9IGpqfQBqAOh6AoDpj+oYBOmP6Z/BCEwSmrwpGF1HG5ytnBwcKKNBg/oHN9CY+XAzgWoYKgmAqguylAFkegBk5CgD54sK5gnmAP0BCeZlj+Zk9qoseAXwHUEIJ1GPd8DgH8UiC6jjsxOwmCCTEtAKEH+kAwCaRUFUNUc2UsAsj0AMnIUAfPFhXME8wB+gITzMsfzMntVBAoECcQRkAzBQTwCeAWXwY0NIIQbS07RRO6ji0B+QEi+QG68uBn+gAwAoIID0JAoVIgu/LgZXCAGMjLBVjPFlj6AstqyYBA+wDgDwAMXwSED/Lwylce5A=='
 
-export const oracleMasterSourceV1CodeCell = Cell.fromBoc(
-    Buffer.from(oracleMasterSourceV1CodeBoc, 'base64'),
-)[0];
+export const oracleMasterSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleMasterSourceV1CodeBoc, 'base64'))[0];
 
 export const oracleClientSourceV1 = () => {
+    return combineFunc(__dirname, [
+      './contract/imports/stdlib.fc',
+      './contract/imports/params.fc',
+      './contract/imports/constants.fc',
+      './contract/imports/op-codes.fc',
+      './contract/imports/modes.fc',
+      './contract/imports/utils.fc',
+      './contract/imports/discovery-params.fc',
+      './contract/oracle-client.fc',
+    ])
+  }
+
+const oracleClientSourceV1CodeBoc =
+  'te6ccsECEgEAAi8AAA0AEgAXADQAOQBYAF0AewCdAKIApwC+AMMA8QEIAXgB+QIvART/APSkE/S88sgLAQIBYgkCAgEgBAMANbyVT2omhqagDofSB9IBgBfQBpj+mP6Y+YCCLAIBIAYFADm7oU7UTQ1NQB0PpA+kAwAvoA0x/TH9MfMBBFXwaAICdAgHADiqJ+1E0NTUAdD6QPpAMAL6ANMf0x/THzAQRWxhAECple1E0NTUAdD6QPpAMAL6ANMf0x/THzAQRV8G0NcLHwICzA8KAgEgDAsAKdOEAMZGWCqAHniwD9AWW1ZMAgfYBAIBWA4NAFcghCYJTV4yMsfE8s/zMnQcIAYyMsFUAPPFoIK+vCA+gISy2oBzxbJgED7AIAApHCAGMjLBVADzxYB+gLLasmAQPsAgAdnZkQ44BJL4HwaGmBgLjYSS+B8HwTt5EYAP0gGAFpj+mfwQgXkDPhKRhdRyAar4H2omh9IGmPmAF8gJD8gN15cDOBfSB9AGmP6Y/qGAMCAuQoA2eLKAJni2SC5GYK5gD9AQnlj4llj+WP5PaqcEEAH87UTQ1NQB0PpA+kAwAvoA0x/TH9MfMBBFghDl4RvpUqC6jjI2Nzc3OAb5ASf5Abry4GcB1DAGVTDIUAbPFlAEzxbJBcjMFcwB+gITyx8Syx/LH8ntVOBfA4IQguljQ1Jwuo4aNDU3BfkBJvkBuvLgZ1EzufLQZUA08AsB8ArgEQBoECNfAzIzghBtLTtFErqOHQL5ASL5Abry4Gf6ADACgggPQkChUiC78uBlAfAM4F8EhA/y8P+kLOQ='
+
+export const oracleClientSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleClientSourceV1CodeBoc, 'base64'))[0]
+
+export const oracleUserSourceV1 = () => {
     return combineFunc(__dirname, [
         './contract/imports/stdlib.fc',
         './contract/imports/params.fc',
@@ -30,13 +46,11 @@ export const oracleClientSourceV1 = () => {
         './contract/imports/modes.fc',
         './contract/imports/utils.fc',
         './contract/imports/discovery-params.fc',
-        './contract/oracle-client.fc',
-    ]);
-};
+        './contract/oracle-user.fc',
+    ])
+}
 
-const oracleClientSourceV1CodeBoc =
-    'te6ccsECCQEAAXAAAA0AEgAtADIAWADZAOABLAFwART/APSkE/S88sgLAQIBYgMCADGhLP/aiaGmAGP0gGOoY6hj9IBjqGGhrhZ/AgLMBQQAR7IDkegBkgWRln+SD5GWAKANniwpmCWYA54sJ5glmAOeLZPaqQP32QY4BIrfAA6GmBmP0gGADpj/aiaGmAfSBqan0gagDoa4WfgOoA6HoCgP0gGBJoaYOYQQhMEpq8KVhdcYEYGLYxQQhBdLGhqRhdcYEYwQg2lp2iiV1HEhD8gID8gN1HCbhADGRlgqxnixD9AWW1ZMGDfYBwGEEAf/95eHBAgHBgAKW4QP8vAAlDL4J28iMIIJMS0AvH+xI/kBA/kBE7oSsI4qghJUC+P//iAwcMjLH8s/yXFwgBjIywVQBM8WI/oCE8tpEssAzMmAQPsA4FuED/LwAIQzOfgnbyIwggkxLQC8IsAAsY4oUZmBAQj0Cm+hMSbAAbGOEcABMAXTPzAQRxA2QBVQQ/AJ4F8JhA/y8OBfCoQP8vBJlsb9';
+const oracleUserSourceV1CodeBoc =
+  'te6ccsEBBgEAlgANEhchL5YBFP8A9KQT9LzyyAsBAgFiBQICAUgEAwAPu6FO1E0NQwgAF7oZXtRNDUMNDXCx+ADK0DMixwCSXwPg0NMDMHGwkVvgAdMfghCC6WNDUiC6ji3TPzH6QHCCEILpY0PIyx/LP8nQcIAYyMsFUATPFlAF+gISy2pQA88WyYBA+wCRMuKCEJglNXi6mtM/MdQwyMzJ7VSRMOKJGWFw'
 
-export const oracleClientSourceV1CodeCell = Cell.fromBoc(
-    Buffer.from(oracleClientSourceV1CodeBoc, 'base64'),
-)[0];
+export const oracleUserSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleUserSourceV1CodeBoc, 'base64'))[0]

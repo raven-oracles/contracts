@@ -1,18 +1,18 @@
 import { SmartContract } from 'ton-contract-executor';
 import { Address, DictBuilder, beginCell, contractAddress } from 'ton';
-import { oracleClientSourceV1 } from './OracleV1.source';
+import { oracleUserSourceV1 } from './OracleV1.source';
 import { compileFunc } from './utils/compileFunc';
 import { zeroAddress } from './utils/randomAddress';
 import BN from 'bn.js';
-import { OracleClientInitConfig, oracleClientInitData } from './OracleV1.data';
+import { OracleUserInitConfig, oracleUserInitData, oracleClientInitData } from './OracleV1.data';
 
-export class OracleV1LocalClient {
-    private constructor(public readonly contract: SmartContract, public readonly address: Address) {}
+export class OracleV1LocalUser {
+    private constructor(public readonly contract: SmartContract, public readonly address: Address) { }
 
-    static async createFromConfig(config: OracleClientInitConfig) {
-        const code = await compileFunc(oracleClientSourceV1());
+    static async createFromConfig(config: OracleUserInitConfig) {
+        const code = await compileFunc(oracleUserSourceV1());
 
-        const data = oracleClientInitData(config);
+        const data = oracleUserInitData(config);
         const contract = await SmartContract.fromCell(code.cell, data);
 
         const address = contractAddress({
@@ -23,9 +23,9 @@ export class OracleV1LocalClient {
 
         contract.setC7Config({
             myself: address,
-            balance: config.balance || new BN(0),
+            balance: new BN(0),
         });
 
-        return new OracleV1LocalClient(contract, address);
+        return new OracleV1LocalUser(contract, address);
     }
 }

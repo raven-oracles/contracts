@@ -120,6 +120,8 @@ export function oracleMasterInitData(config: {
     };
     comission_size: BN;
     whitelisted_oracle_addresses: Address[];
+    number_of_clients: BN;
+    data_field: Cell;
 }): Cell {
     return beginCell()
         .storeAddress(config.admin_address)
@@ -127,6 +129,8 @@ export function oracleMasterInitData(config: {
         .storeRef(oracleClientSourceV1CodeCell)
         .storeCoins(config.comission_size)
         .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
+        .storeUint(config.number_of_clients, 32)
+        .storeRef(config.data_field)
         .endCell();
 }
 
@@ -154,34 +158,49 @@ export interface OracleMasterConfig {
     };
     comission_size: BN;
     whitelisted_oracle_addresses: Address[];
+    number_of_clients: BN,
+    data_field: Cell,
 }
 
-export interface OracleClientConfig {
-    actual_value: number;
-    owner_address: Address;
-    oracle_master_address: Address;
-    smartcontract_address: Address;
-    comission_size: BN;
-    mode: number;
-    interval: number;
-    whitelisted_oracle_addresses: Address[];
+export interface OracleClientInitConfig {
     balance?: BN;
+    oracle_master_address: Address;
+    client_id: BN;
 }
 
-export function oracleClientInitData(config: OracleClientConfig): Cell {
+export function oracleClientInitData(config: OracleClientInitConfig): Cell {
     return beginCell()
-        .storeUint(config.actual_value, 64)
-        .storeRef(
-            beginCell()
-                .storeAddress(config.owner_address)
-                .storeAddress(config.oracle_master_address)
-                .storeAddress(config.smartcontract_address)
-                .endCell(),
-        )
+        .storeAddress(config.oracle_master_address)
+        .storeUint(config.client_id, 32)
+        .endCell();
+}
+
+export interface OracleUserInitConfig {
+}
+
+export function oracleUserInitData(config: OracleUserInitConfig): Cell {
+    return beginCell()
+        .endCell();
+}
+
+export interface OracleClientUploadConfig {
+    data_field: Cell;
+    user_sc_address: Address;
+    oracle_master_address: Address;
+    comission_size: BN;
+    mode: BN;
+    interval: BN;
+}
+
+export function oracleClientUploadData(config: OracleClientUploadConfig): Cell {
+    return beginCell()
+        .storeUint(OPS.CreateAccount, 32)
+        .storeUint(0, 64)
+        .storeAddress(config.user_sc_address)
         .storeCoins(config.comission_size)
-        .storeRef(beginCell().storeDict(buildAddressesDict(config.whitelisted_oracle_addresses)).endCell())
         .storeUint(config.mode, 32)
         .storeUint(config.interval, 32)
+        .storeRef(config.data_field)
         .endCell();
 }
 

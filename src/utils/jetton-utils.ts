@@ -8,6 +8,8 @@ interface OracleDetails {
     client_init_code: Cell;
     comission_size: BN;
     whitelisted_oracle_addresses: any;
+    number_of_clients: BN,
+    data_field: Cell,
 }
 export function parseOracleDetails(execResult: { result: any[] }): OracleDetails {
     return {
@@ -16,6 +18,8 @@ export function parseOracleDetails(execResult: { result: any[] }): OracleDetails
         client_init_code: execResult.result[2] as Cell,
         comission_size: execResult.result[3] as BN,
         whitelisted_oracle_addresses: loadAddressesDict(execResult.result[4] as Cell),
+        number_of_clients: execResult.result[5] as BN,
+        data_field: execResult.result[6] as Cell,
     };
 }
 
