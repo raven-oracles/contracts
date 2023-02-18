@@ -6,7 +6,7 @@ import { oracleMasterSourceV1 } from './OracleV1.source';
 import { compileFunc } from './utils/compileFunc';
 import { randomAddress } from './utils/randomAddress';
 export class OracleV1LocalMaster {
-    private constructor(public readonly contract: SmartContract, public readonly address: Address) {}
+    private constructor(public readonly contract: SmartContract, public readonly address: Address) { }
 
     static async createFromConfig(config: OracleMasterConfig) {
         const code = await compileFunc(oracleMasterSourceV1());
@@ -27,11 +27,13 @@ export class OracleV1LocalMaster {
         return new OracleV1LocalMaster(contract, address);
     }
 
-    static createSignupPayload(user_sc_address: Address): Cell {
+    static createSignupPayload(user_sc_address: Address, interval: BN, mode: number): Cell {
         return beginCell()
             .storeUint(OPS.Signup, 32) // opcode
             .storeUint(0, 64) // queryid
             .storeAddress(user_sc_address)
+            .storeUint(mode, 32)
+            .storeUint(interval, 32)
             .endCell();
     }
 }

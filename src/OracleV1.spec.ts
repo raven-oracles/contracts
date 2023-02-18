@@ -73,7 +73,7 @@ const clientUploadConfig: OracleClientUploadConfig = {
     oracle_master_address: randomAddress('oracle_master_address'),
     comission_size: toNano(0.1),
     mode: new BN(MODES.OnDemand),
-    interval: new BN(1),
+    interval: new BN(10),
 };
 
 describe('Oracle v1 Master', () => {
@@ -106,7 +106,7 @@ describe('Oracle v1 Master', () => {
             internalMessage({
                 from: END_USER,
                 value: toNano(2),
-                body: OracleV1LocalMaster.createSignupPayload(user_sc_address),
+                body: OracleV1LocalMaster.createSignupPayload(user_sc_address, clientUploadConfig.interval, MODES.Subscription),
             }),
         );
 
@@ -181,6 +181,7 @@ describe('Oracle v1 Client', () => {
             }),
         );
 
+        console.log(result.debugLogs)
         expect(result.exit_code).toEqual(0);
 
         const getMethodResult = await clientContract.contract.invokeGetMethod('get_data_field', []);
@@ -269,6 +270,7 @@ describe('Oracle v1 Client', () => {
         );
 
         // TODO: test there were actual 2 tx send - comission payment and op::update
+        console.log(result.debugLogs)
         expect(result.exit_code).toEqual(0);
     });
 });

@@ -32,14 +32,11 @@ cell compose_create_account(cell data_field, slice user_sc_address, int comissio
 }
 
 ;; TODO: add dict support with whitelisted addresses of sc
-() sign_up(int new_client_id, int query_id, slice client_owner_addr, cell oracle_client_code, int start_balance, slice user_sc_address, int comission_size, cell whitelisted_oracle_addresses, cell data_field) impure {
+() sign_up(int mode, int new_client_id, int query_id, slice client_owner_addr, cell oracle_client_code, int start_balance, slice user_sc_address, int comission_size, cell whitelisted_oracle_addresses, cell data_field, int interval) impure {
     cell state_init = calculate_oracle_client_state_init(my_address(), new_client_id, oracle_client_code);
     slice to_wallet_address = calculate_oracle_client_address(state_init);
     
-    int default_mode = mode::on_demand();
-    int interval = 0;
-
-    cell body = compose_create_account(data_field, user_sc_address, comission_size, default_mode, interval);
+    cell body = compose_create_account(data_field, user_sc_address, comission_size, mode, interval); ;; todo mode needed to be changed from transaction (user must choose)
  
     var msg = begin_cell()
                 .store_uint(0x18, 6)
@@ -122,9 +119,12 @@ cell compose_create_account(cell data_field, slice user_sc_address, int comissio
     if (op == op::signup()) {
         int start_balance = msg_value - min_to_create_account;
         slice user_sc_address = in_msg_body~load_msg_addr();
+        int mode = in_msg_body~load_uint(32);
+        int interval = in_msg_body~load_uint(32);
         int new_client_id = number_of_clients + 1; 
+        ;; TODO make checker on what data user throw in msg body /// we cannot allow user to make subsctiption with 1ton in a year 
         save_data(admin_address, meta_data, oracle_client_code, comission_size, whitelisted_oracle_addresses, new_client_id, data_field);
-        sign_up(new_client_id, query_id, sender_address, oracle_client_code, start_balance, user_sc_address, comission_size, whitelisted_oracle_addresses, data_field);
+        sign_up(mode, new_client_id, query_id, sender_address, oracle_client_code, start_balance, user_sc_address, comission_size, whitelisted_oracle_addresses, data_field, interval);
         return ();
     }
 
