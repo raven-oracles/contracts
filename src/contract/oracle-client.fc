@@ -174,8 +174,14 @@ _ load_init_data () inline {
   int last_timeslot = (last_payment_time - start_time) / interval;
   int cur_timeslot = (now() - start_time) / interval;
 
-  throw_unless(49, cur_timeslot > last_timeslot); ;; too early request
-  throw_unless(66, mode == mode::on_demand()); ;; wrong mode 
+  ~dump(cur_timeslot);
+  ~dump(last_timeslot);
+  ~dump(last_payment_time );
+  ~dump(start_time);
+  ~dump(now());
+
+  throw_unless(49, cur_timeslot > last_timeslot); ;; too early request 
+  throw_if(66, mode == mode::on_demand()); ;; wrong mode 
   
   accept_message();
  

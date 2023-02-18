@@ -72,8 +72,8 @@ const clientUploadConfig: OracleClientUploadConfig = {
     user_sc_address: randomAddress('user_sc_address'),
     oracle_master_address: randomAddress('oracle_master_address'),
     comission_size: toNano(0.1),
-    mode: new BN(MODES.OnDemand),
-    interval: new BN(10),
+    mode: new BN(MODES.Subscription),
+    interval: new BN(1),
 };
 
 describe('Oracle v1 Master', () => {
@@ -273,6 +273,21 @@ describe('Oracle v1 Client', () => {
         console.log(result.debugLogs)
         expect(result.exit_code).toEqual(0);
     });
+
+    if (clientUploadConfig.mode.toNumber() == MODES.Subscription) {
+        it('ping payment should fail with 49 err', async () => {
+            const result = await clientContract.contract.sendExternalMessage(
+                new ExternalMessage({
+                    to: clientContract.address,
+                    from: clientUploadConfig.user_sc_address,
+                    body: new CommonMessageInfo({
+                        body: new CellMessage(beginCell().storeUint(OPS.Fetch, 32).storeUint(0, 64).endCell()),
+                    }),
+                }),
+            );
+            expect(result.exit_code).toEqual(49);
+        });
+    }
 });
 
 
