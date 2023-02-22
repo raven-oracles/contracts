@@ -38,7 +38,6 @@ _ load_init_data () inline {
   }
 
   if (op == op::update()){
-    (cell data_field) = load_init_data();
     int query = in_msg_body~load_uint(64);
     cell new_data_field = in_msg_body~load_ref();
     set_data(begin_cell().store_ref(new_data_field).end_cell());

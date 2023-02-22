@@ -125,16 +125,6 @@ _ load_init_data () inline {
   (cell data_field, slice user_sc_address, slice master_address, int comission_size, int mode, int interval, int client_id, int last_payment_time, int start_time) = load_data();
   if (op == op::new_value()) {
     throw_unless(103, sender_address.slice_hash() == master_address.slice_hash()); ;; permission denied
-    ;; todo check mode and if sub then new logic
-    ;;if (mode == mode::subscription()){
-    ;;
-    ;;} else {
-
-    ;;}
-   
-    ;; TODO we need to change how update value works
-    ;; we need to send new data ONLY thrue external msgs
-
     cell new_data_field = in_msg_body~load_ref();
     save_data(new_data_field, user_sc_address, master_address, comission_size, mode, interval, client_id, last_payment_time, start_time); 
     return();
@@ -166,19 +156,13 @@ _ load_init_data () inline {
 }
 
 () recv_external(slice in_msg) impure {
-  ;; var (wallet, beneficiary, amount, interval, start_time, timeout, last_payment_time, last_request_time, failed_attempts, subscription_id) = load_storage();
   int op = in_msg~load_uint(32);
   int query_id = in_msg~load_uint(64);
   
   (cell data_field, slice user_sc_address, slice master_address, int comission_size, int mode, int interval, int client_id, int last_payment_time, int start_time) = load_data();
+
   int last_timeslot = (last_payment_time - start_time) / interval;
   int cur_timeslot = (now() - start_time) / interval;
-
-  ~dump(cur_timeslot);
-  ~dump(last_timeslot);
-  ~dump(last_payment_time );
-  ~dump(start_time);
-  ~dump(now());
 
   throw_unless(49, cur_timeslot > last_timeslot); ;; too early request 
   throw_if(66, mode == mode::on_demand()); ;; wrong mode 
@@ -189,7 +173,6 @@ _ load_init_data () inline {
   compose_comission_payment(master_address, comission_size);
  
   save_data(data_field, user_sc_address, master_address, comission_size, mode, interval, client_id, now(), start_time); 
-  ;;save_storage(wallet, beneficiary, amount, interval, start_time, timeout, last_payment_time, now(), failed_attempts, subscription_id);
 }
 
 (cell, slice, slice, int, int, int, int, int, int) get_client_data() method_id {
