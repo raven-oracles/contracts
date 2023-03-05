@@ -1,2 +1,0 @@
-int mode::on_demand() asm "0x8660a9dc PUSHINT";
-int mode::subscription() asm "0xa3c664d3 PUSHINT";
