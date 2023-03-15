@@ -26,5 +26,5 @@ There is two option of paying fees to the “owner” from the “client” for 
 
 Also, id like to notice that our main product - is smart contracts, you can interact with them without using our js lib / our fe app and etc
 
-(subscription)[https://github.com/raven-oracle/contracts/blob/main/pics/1.png]
-(ondemant)[https://github.com/raven-oracle/contracts/blob/main/pics/2.png]
+(subscription)[https://github.com/raven-oracles/contracts/blob/master/pics/1.png?raw=true]
+(ondemant)[https://github.com/raven-oracle/contracts/blob/main/pics/1.png?raw=true]
